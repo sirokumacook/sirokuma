@@ -3,450 +3,567 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Shirokuma - 日本語版</title>
+    <title>Shirokuma Pro v5</title>
     <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         :root {
-            --bg-base: #000000;
-            --bg-side: #121212;
-            --bg-card: #1c1c1c;
-            --accent: #1d9bf0; /* 青色チェック */
-            --gold: #d4af37;   /* 金色チェック */
-            --text-main: #e7e9ea;
-            --text-sub: #71767b;
-            --border: #2f3336;
+            --bg-discord: #36393f;
+            --bg-side: #2f3136;
+            --bg-black: #000000;
+            --accent: #5865f2; /* Discord Blue */
+            --gold: #d4af37;
+            --verify-blue: #1d9bf0;
+            --text-main: #dcddde;
+            --text-sub: #8e9297;
+            --danger: #ed4245;
+            --online: #3ba55d;
+            --offline: #747f8d;
         }
 
         body {
-            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
-            margin: 0; background: var(--bg-base); color: var(--text-main);
+            font-family: 'Whitney', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            margin: 0; background: var(--bg-black); color: var(--text-main);
             display: flex; height: 100dvh; overflow: hidden;
         }
 
-        /* サイドバー */
+        /* --- Layout --- */
         #sidebar {
-            width: 260px; background: var(--bg-side);
-            display: flex; flex-direction: column; border-right: 1px solid var(--border);
-            transition: 0.3s; flex-shrink: 0;
+            width: 240px; background: var(--bg-side);
+            display: flex; flex-direction: column; flex-shrink: 0;
+            transition: 0.3s; z-index: 100;
         }
+
+        #main-content { flex-grow: 1; display: flex; flex-direction: column; background: var(--bg-discord); position: relative; }
 
         @media screen and (max-width: 768px) {
-            #sidebar { position: absolute; left: -260px; height: 100%; z-index: 1000; }
+            #sidebar { position: absolute; left: -240px; height: 100%; }
             #sidebar.open { left: 0; }
+            .mobile-back { display: block !important; }
         }
 
-        .nav-btn {
-            width: 100%; padding: 15px 20px; border: none; background: none;
-            color: var(--text-main); text-align: left; cursor: pointer; font-size: 16px;
+        /* --- Sidebar Parts --- */
+        .brand { padding: 15px; font-weight: bold; font-size: 18px; border-bottom: 1px solid #222; }
+        
+        .my-profile-brief {
+            padding: 10px 15px; display: flex; align-items: center; gap: 10px;
+            background: rgba(0,0,0,0.2); cursor: pointer;
         }
-        .nav-btn:hover { background: var(--bg-card); }
-        .nav-btn.active { font-weight: bold; color: var(--accent); background: rgba(29, 155, 240, 0.1); }
+        .my-profile-brief:hover { background: rgba(255,255,255,0.05); }
+        .avatar { width: 32px; height: 32px; border-radius: 50%; background: #555; object-fit: cover; border: 2px solid transparent; }
+        .avatar.online { border-color: var(--online); }
+        .avatar.invisible { border-color: var(--offline); }
 
-        /* メインエリア */
-        #main-area { flex-grow: 1; display: flex; flex-direction: column; position: relative; background: var(--bg-base); }
+        .nav-item {
+            padding: 10px 15px; cursor: pointer; display: flex; align-items: center; gap: 10px;
+            color: var(--text-sub); font-size: 15px;
+        }
+        .nav-item:hover, .nav-item.active { background: #393c43; color: #fff; }
+
+        /* --- Views --- */
         .view { display: none; flex-direction: column; height: 100%; }
         .view.active { display: flex; }
+        header { height: 48px; display: flex; align-items: center; padding: 0 15px; border-bottom: 1px solid #26272b; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        
+        .msg-area { flex-grow: 1; overflow-y: auto; padding: 20px 0; }
+        .msg-row { padding: 5px 20px; position: relative; display: flex; gap: 15px; }
+        .msg-row:hover { background: rgba(4,4,5,0.07); }
+        .msg-content { flex-grow: 1; }
+        .msg-name { font-weight: bold; font-size: 15px; cursor: pointer; }
+        .msg-text { font-size: 14px; white-space: pre-wrap; word-break: break-all; }
+        .msg-deleted { color: #555; font-style: italic; font-size: 12px; }
+        .admin-peek { color: rgba(212, 175, 55, 0.3); font-size: 11px; margin-left: 5px; }
 
-        header {
-            padding: 10px 15px; border-bottom: 1px solid var(--border);
-            display: flex; align-items: center; justify-content: space-between;
+        .input-box-wrapper { padding: 0 20px 20px; }
+        .input-field {
+            background: #40444b; border-radius: 8px; padding: 10px 15px;
+            display: flex; align-items: center; gap: 10px;
         }
+        input[type="text"] { background: none; border: none; color: #fff; outline: none; flex-grow: 1; }
 
-        /* チャット表示 */
-        .msg-container { flex-grow: 1; overflow-y: auto; padding: 10px 0; }
-        .msg-row { padding: 10px 15px; border-bottom: 1px solid #111; display: flex; gap: 12px; }
-        .user-icon { width: 42px; height: 42px; border-radius: 50%; background: #333; cursor: pointer; object-fit: cover; flex-shrink: 0; }
-        .msg-body { flex-grow: 1; }
-        .msg-header { display: flex; align-items: center; gap: 5px; margin-bottom: 3px; }
-        .msg-name { font-weight: bold; cursor: pointer; }
-        .msg-name:hover { text-decoration: underline; }
-
-        /* バッジ (X風) */
-        .badge { width: 16px; height: 16px; vertical-align: middle; }
+        /* --- Badges --- */
+        .badge { width: 14px; height: 14px; vertical-align: middle; margin-left: 4px; }
         .badge-gold { fill: var(--gold); }
-        .badge-blue { fill: var(--accent); }
+        .badge-blue { fill: var(--verify-blue); }
 
-        /* 入力エリア */
-        .input-area { padding: 15px; border-top: 1px solid var(--border); display: flex; gap: 10px; background: var(--bg-base); }
-        input[type="text"], textarea {
-            background: var(--bg-card); border: 1px solid var(--border); color: #fff;
-            padding: 10px 15px; border-radius: 20px; outline: none; flex-grow: 1;
-        }
-
-        /* モーダル */
+        /* --- Modals --- */
         .modal {
-            position: fixed; inset: 0; background: rgba(255,255,255,0.1);
-            display: none; align-items: center; justify-content: center; z-index: 2000;
+            position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+            display: none; align-items: center; justify-content: center; z-index: 1000;
         }
-        .modal-content {
-            background: var(--bg-base); border: 1px solid var(--border);
-            padding: 25px; border-radius: 15px; width: 90%; max-width: 400px;
-        }
+        .modal-box { background: var(--bg-discord); width: 90%; max-width: 440px; border-radius: 8px; overflow: hidden; }
+        .modal-body { padding: 20px; }
+        .btn { padding: 10px 20px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-ghost { background: none; color: white; border: 1px solid #4f545c; }
 
-        .profile-icon-large { width: 80px; height: 80px; border-radius: 50%; background: #333; margin: 0 auto 10px; object-fit: cover; display: block; }
-        .profile-bio { font-size: 14px; color: var(--text-sub); margin: 15px 0; white-space: pre-wrap; line-height: 1.5; }
-        .profile-footer { font-size: 11px; padding: 10px; background: var(--bg-card); border-radius: 8px; color: var(--text-sub); }
-
-        .btn {
-            background: var(--accent); color: #fff; border: none; padding: 12px;
-            border-radius: 25px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px;
-        }
-        .btn-sub { background: #333; }
-
-        #id-display { font-size: 9px; color: #333; text-align: center; padding: 10px; margin-top: auto; }
-        .hidden { display: none; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
     </style>
 </head>
 <body>
 
-    <svg style="display:none;">
-        <symbol id="check-icon" viewBox="0 0 24 24">
-            <path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.97-.81-4.01s-2.62-1.27-4.01-.81C14.67 2.53 13.43 1.65 12 1.65s-2.67.88-3.34 2.19c-1.39-.46-2.97-.2-4.01.81s-1.27 2.62-.81 4.01C2.53 9.33 1.65 10.57 1.65 12s.88 2.67 2.19 3.34c-.46 1.39-.2 2.97.81 4.01s2.62 1.27 4.01.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.97.2 4.01-.81s1.27-2.62.81-4.01c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2l-3.53-3.53 1.41-1.41 2.12 2.12 4.96-4.96 1.41 1.41-6.37 6.37z"/>
-        </symbol>
+    <svg style="display:none">
+        <symbol id="icon-ver" viewBox="0 0 24 24"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.97-.81-4.01s-2.62-1.27-4.01-.81C14.67 2.53 13.43 1.65 12 1.65s-2.67.88-3.34 2.19c-1.39-.46-2.97-.2-4.01.81s-1.27 2.62-.81 4.01C2.53 9.33 1.65 10.57 1.65 12s.88 2.67 2.19 3.34c-.46 1.39-.2 2.97.81 4.01s2.62 1.27 4.01.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.97.2 4.01-.81s1.27-2.62.81-4.01c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2l-3.53-3.53 1.41-1.41 2.12 2.12 4.96-4.96 1.41 1.41-6.37 6.37z"/></symbol>
     </svg>
 
-    <div id="setup-modal" class="modal">
-        <div class="modal-content">
-            <h2 style="text-align:center; margin-top:0;">初期設定</h2>
-            <div style="text-align: center;">
-                <img id="setup-icon-preview" class="profile-icon-large" src="">
-                <input type="file" id="icon-input" accept="image/*" style="display:none" onchange="previewIcon(this)">
-                <button class="btn btn-sub" style="width:auto; font-size:12px;" onclick="document.getElementById('icon-input').click()">アイコンを選択</button>
-            </div>
-            <input type="text" id="setup-name" style="width:100%; box-sizing:border-box; margin-top:15px; background:var(--bg-card); border:1px solid var(--border); color:#fff; padding:10px; border-radius:10px;" placeholder="名前 (例: 大谷翔平)">
-            <textarea id="setup-bio" style="width:100%; box-sizing:border-box; margin-top:10px; border-radius:10px; height:80px; background:var(--bg-card); border:1px solid var(--border); color:#fff; padding:10px;" placeholder="自己紹介"></textarea>
-            <button class="btn" onclick="saveProfile()">保存して開始</button>
-        </div>
-    </div>
-
-    <div id="profile-modal" class="modal" onclick="this.style.display='none'">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <div style="text-align: center;">
-                <img id="p-icon" class="profile-icon-large" src="">
-                <h3 id="p-name" style="margin:5px 0;"></h3>
-                <div id="p-badges"></div>
-            </div>
-            <div id="p-bio" class="profile-bio"></div>
-            <div id="p-footer" class="profile-footer"></div>
-            
-            <div id="admin-tools" class="hidden" style="margin-top:15px; border-top:1px solid var(--border); padding-top:10px;">
-                <p style="font-size:10px; font-weight:bold; color:var(--text-sub);">管理者ツール</p>
-                <button id="verify-btn" class="btn" style="background:var(--gold); color:black;">認証マークを付与</button>
-            </div>
-            <button class="btn btn-sub" onclick="document.getElementById('profile-modal').style.display='none'">閉じる</button>
-        </div>
-    </div>
-
     <aside id="sidebar">
-        <div style="padding: 20px; border-bottom: 1px solid var(--border);">
-            <div style="font-weight: bold; font-size: 20px; letter-spacing: 1px;">Shirokuma</div>
-            <div id="my-short-info" style="font-size: 12px; color: var(--text-sub); margin-top: 5px;">
-                <span id="my-name-display">---</span>
-                <span id="my-badge-display"></span>
+        <div class="brand">Shirokuma Pro</div>
+        
+        <div class="my-profile-brief" onclick="openMyProfile()">
+            <img id="my-avatar-side" class="avatar" src="">
+            <div style="flex-grow:1; overflow:hidden;">
+                <div id="my-name-side" style="font-weight:bold; font-size:14px; overflow:hidden; text-overflow:ellipsis;">---</div>
+                <div id="my-status-text" style="font-size:11px; color:var(--text-sub);">オンライン</div>
             </div>
+            <div id="my-badge-side"></div>
         </div>
-        <nav style="flex-grow: 1;">
-            <button id="nav-global" class="nav-btn active" onclick="showView('global')">グローバルチャット</button>
-            <button id="nav-dm" class="nav-btn" onclick="showView('dm')">個人チャット</button>
-            <button id="nav-friends" class="nav-btn" onclick="showView('friends')">フレンド一覧</button>
-            <button id="nav-settings" class="nav-btn" onclick="showView('settings')">設定</button>
+
+        <nav style="margin-top:10px; flex-grow:1">
+            <div class="nav-item active" onclick="showView('global')"><span>#</span> グローバル</div>
+            <div class="nav-item" onclick="showView('dm')"><span>@</span> 個人チャット</div>
+            <div class="nav-item" onclick="showView('friends')"><span>👥</span> フレンド</div>
+            <div class="nav-item" onclick="showView('settings')"><span>⚙️</span> 設定</div>
         </nav>
-        <div id="id-display">ID: <span id="my-id-text"></span></div>
+
+        <div style="padding:10px; font-size:10px; color:#444; border-top:1px solid #222;">ID: <span id="my-id-display"></span></div>
     </aside>
 
-    <main id="main-area">
+    <main id="main-content">
         <div id="view-global" class="view active">
             <header>
-                <button onclick="document.getElementById('sidebar').classList.toggle('open')" class="nav-btn" style="width:auto; padding:5px;">メニュー</button>
-                <span style="font-weight:bold;">全体広場</span>
-                <span id="global-status" style="font-size:10px; color:var(--accent);">接続中...</span>
+                <button class="btn-ghost mobile-back" style="display:none; margin-right:10px;" onclick="toggleSidebar()">≡</button>
+                <div style="font-weight:bold;"># グローバル</div>
+                <div id="global-count" style="margin-left:auto; font-size:12px; color:var(--text-sub);">0人が閲覧中</div>
             </header>
-            <div id="messages-global" class="msg-container"></div>
-            <div class="input-area">
-                <input type="text" id="input-global" placeholder="メッセージを入力" onkeypress="if(event.key==='Enter')sendGlobal()">
-                <button onclick="sendGlobal()" class="btn" style="width:auto; margin:0; padding:0 20px;">送信</button>
+            <div id="msg-global" class="msg-area"></div>
+            <div class="input-box-wrapper">
+                <div class="input-field">
+                    <input type="text" id="in-global" placeholder="#グローバルへメッセージを送信" onkeypress="if(event.key==='Enter')sendMsg('global')">
+                </div>
             </div>
         </div>
 
         <div id="view-dm" class="view">
             <header>
-                <button onclick="document.getElementById('sidebar').classList.toggle('open')" class="nav-btn" style="width:auto; padding:5px;">メニュー</button>
-                <span id="dm-title">個人チャット</span>
-                <button onclick="location.reload()" class="btn-sub" style="font-size:10px; border-radius:5px; padding:2px 5px; color:#fff; border:none;">切断</button>
+                <button class="btn-ghost mobile-back" style="display:none; margin-right:10px;" onclick="toggleSidebar()">≡</button>
+                <div id="dm-title" style="font-weight:bold;">個人チャット</div>
+                <button id="dm-close-btn" class="btn-ghost" style="margin-left:auto; font-size:11px; display:none;" onclick="closeDM()">切断</button>
             </header>
-            
-            <div id="dm-init" style="padding:40px 20px; text-align:center;">
-                <div style="color:var(--text-sub); margin-bottom:15px;">相手のPINを入力して接続します</div>
-                <input type="text" id="target-pin" style="width:180px; text-align:center; font-size:24px; letter-spacing:4px;" placeholder="00000" maxlength="5">
-                <button class="btn" style="width:200px; margin:20px auto;" onclick="connectViaPin()">接続する</button>
-                <div style="margin-top:20px; font-size:13px; color:var(--text-sub);">あなたのPIN: <strong id="my-pin-display" style="color:#fff;">-----</strong></div>
+            <div id="dm-init" style="padding:40px; text-align:center;">
+                <p>相手のPINを入力して接続リクエストを送信</p>
+                <input type="text" id="target-pin" style="background:#222; border:1px solid #444; padding:10px; text-align:center; font-size:20px; width:150px;" placeholder="00000">
+                <button class="btn btn-primary" style="display:block; margin:20px auto;" onclick="requestConnect()">リクエスト送信</button>
+                <p style="font-size:12px; color:var(--text-sub);">あなたのPIN: <strong id="my-pin-display">---</strong></p>
             </div>
-
-            <div id="messages-dm" class="msg-container hidden"></div>
-            <div id="dm-input-area" class="input-area hidden">
-                <input type="text" id="input-dm" placeholder="メッセージを入力" onkeypress="if(event.key==='Enter')sendDM()">
-                <button onclick="sendDM()" class="btn" style="width:auto; margin:0; padding:0 20px;">送信</button>
+            <div id="msg-dm" class="msg-area" style="display:none;"></div>
+            <div id="dm-input-area" class="input-box-wrapper" style="display:none;">
+                <div class="input-field">
+                    <input type="text" id="in-dm" placeholder="メッセージを送信" onkeypress="if(event.key==='Enter')sendMsg('dm')">
+                </div>
             </div>
         </div>
 
         <div id="view-friends" class="view">
-            <header><span style="font-weight:bold;">フレンド</span></header>
+            <header>
+                <button class="btn-ghost mobile-back" style="display:none; margin-right:10px;" onclick="toggleSidebar()">＜ 戻る</button>
+                <div style="font-weight:bold;">フレンド</div>
+            </header>
             <div id="friend-list" style="padding:10px;"></div>
         </div>
 
         <div id="view-settings" class="view">
-            <header><span style="font-weight:bold;">設定</span></header>
-            <div style="padding:20px;">
-                <div style="background:var(--bg-card); padding:15px; border-radius:15px; border:1px solid var(--border);">
-                    <p style="margin-top:0;">プロフィールの編集</p>
-                    <button class="btn btn-sub" onclick="openSetup()">変更画面を開く</button>
+            <header>
+                <button class="btn-ghost mobile-back" style="display:none; margin-right:10px;" onclick="toggleSidebar()">＜ 戻る</button>
+                <div style="font-weight:bold;">ユーザー設定</div>
+            </header>
+            <div style="padding:20px; overflow-y:auto;">
+                <h3>プロフィール設定</h3>
+                <div class="btn-ghost" style="padding:15px; border-radius:8px; margin-bottom:20px;">
+                    <label>表示名</label><br>
+                    <input type="text" id="set-name" style="width:100%; padding:8px; margin:10px 0;" onchange="updateProfile('name', this.value)">
+                    <label>自己紹介</label><br>
+                    <textarea id="set-bio" style="width:100%; background:#222; color:#fff; border:1px solid #444; padding:8px; margin-top:10px;" onchange="updateProfile('bio', this.value)"></textarea>
+                    <label>アイコンURL</label><br>
+                    <input type="text" id="set-icon" style="width:100%; padding:8px; margin-top:10px;" placeholder="画像URL" onchange="updateProfile('icon', this.value)">
                 </div>
-                <div style="margin-top:20px; border-top:1px solid #333; padding-top:20px;">
-                    <button class="btn btn-sub" style="font-size:12px; color:#444;" onclick="promptAdmin()">管理者認証</button>
+
+                <h3>ステータス</h3>
+                <button class="btn btn-ghost" onclick="toggleInvisible()">オンライン隠し: <span id="inv-status">OFF</span></button>
+
+                <div id="admin-settings-section" style="display:none; margin-top:40px; border-top:2px solid var(--gold); padding-top:20px;">
+                    <h3 style="color:var(--gold)">管理者用 高度な設定 (30項目)</h3>
+                    <div id="admin-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                        </div>
                 </div>
+
+                <button class="btn btn-ghost" style="margin-top:40px; opacity:0.3;" onclick="promptAdmin()">管理者ログイン</button>
             </div>
         </div>
     </main>
 
+    <div id="profile-modal" class="modal" onclick="this.style.display='none'">
+        <div class="modal-box" onclick="event.stopPropagation()">
+            <div style="height:60px; background:var(--accent);"></div>
+            <div class="modal-body" style="position:relative; padding-top:50px;">
+                <img id="modal-avatar" class="avatar" style="width:80px; height:80px; position:absolute; top:-40px; left:20px; border:6px solid var(--bg-discord);" src="">
+                <h2 id="modal-name"></h2>
+                <div id="modal-badges" style="margin-bottom:10px;"></div>
+                <div id="modal-status-label" style="font-size:12px; margin-bottom:10px;"></div>
+                <div id="modal-bio" style="background:#222; padding:10px; border-radius:4px; font-size:14px; margin-bottom:20px;"></div>
+                
+                <div id="modal-actions"></div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // --- データ管理 ---
-        let userData = JSON.parse(localStorage.getItem('sk_user') || '{"name":"","bio":"","icon":"","id":"","isAdmin":false,"isVerified":false}');
-        let friends = JSON.parse(localStorage.getItem('sk_friends') || '[]');
-        let verifiedList = JSON.parse(localStorage.getItem('sk_verified_ids') || '[]');
+        let me = JSON.parse(localStorage.getItem('sh5_me') || '{"name":"ゲスト","id":"","icon":"","bio":"","isAdmin":false,"isVerified":false,"isInvisible":false}');
+        let friends = JSON.parse(localStorage.getItem('sh5_friends') || '[]');
+        let verifiedUsers = JSON.parse(localStorage.getItem('sh5_vlist') || '[]'); // 管理者が認証したIDリスト
 
-        if (!userData.id) {
-            userData.id = Math.floor(Math.random() * 9e9 + 1e9).toString();
-            saveData();
-        }
+        if(!me.id) me.id = Math.floor(Math.random()*9e9+1e9).toString();
+        localStorage.setItem('sh5_me', JSON.stringify(me));
 
-        function saveData() {
-            localStorage.setItem('sk_user', JSON.stringify(userData));
-            localStorage.setItem('sk_friends', JSON.stringify(friends));
-            localStorage.setItem('sk_verified_ids', JSON.stringify(verifiedList));
-        }
+        const goldBadge = `<svg class="badge badge-gold"><use href="#icon-ver"/></svg>`;
+        const blueBadge = `<svg class="badge badge-blue"><use href="#icon-ver"/></svg>`;
+        const sysIcon = "https://img.icons8.com/ios-filled/100/ffffff/settings.png";
 
-        const goldBadge = `<svg class="badge badge-gold"><use href="#check-icon"/></svg>`;
-        const blueBadge = `<svg class="badge badge-blue"><use href="#check-icon"/></svg>`;
-
-        // --- 通信コア (i-FILTER回避用設定) ---
-        const peerConfig = {
-            config: { 'iceServers': [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] }
-        };
-
-        const myPeer = new Peer('SKR_' + userData.id, peerConfig);
-        const myPin = Math.floor(Math.random() * 90000 + 10000).toString();
-        const pinPeer = new Peer('SKR_PIN_' + myPin, peerConfig);
+        // --- PeerJS ---
+        const peer = new Peer('SH5_' + me.id, { config: {'iceServers': [{ urls: 'stun:stun.l.google.com:19302' }]} });
+        const myPin = Math.floor(Math.random()*90000+10000).toString();
+        const pinPeer = new Peer('SH5_PIN_' + myPin);
         
-        let globalConnPool = [];
-        let activeDM = null;
+        let activeConn = null;
+        let globalConns = [];
 
         window.onload = () => {
-            document.getElementById('my-id-text').textContent = userData.id;
-            document.getElementById('my-pin-display').textContent = myPin;
-            if (!userData.name) openSetup();
-            updateMyUI();
-            renderFriends();
+            initUI();
             connectGlobal();
+            renderFriends();
+            if(me.isAdmin) buildAdminSettings();
         };
 
-        function updateMyUI() {
-            document.getElementById('my-name-display').textContent = userData.name;
-            let badges = userData.isAdmin ? goldBadge : (userData.isVerified ? blueBadge : "");
-            document.getElementById('my-badge-display').innerHTML = badges;
-            if (userData.isAdmin) document.getElementById('my-name-display').style.color = "var(--gold)";
-        }
-
-        function openSetup() {
-            document.getElementById('setup-name').value = userData.name || "大谷翔平";
-            document.getElementById('setup-bio').value = userData.bio;
-            document.getElementById('setup-icon-preview').src = userData.icon || "";
-            document.getElementById('setup-modal').style.display = 'flex';
-        }
-
-        function previewIcon(input) {
-            const file = input.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = e => {
-                    document.getElementById('setup-icon-preview').src = e.target.result;
-                    userData.icon = e.target.result;
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-
-        function saveProfile() {
-            userData.name = document.getElementById('setup-name').value.trim() || "大谷翔平";
-            userData.bio = document.getElementById('setup-bio').value.trim();
-            saveData();
-            location.reload();
-        }
-
-        function showUserProfile(data) {
-            const m = document.getElementById('profile-modal');
-            document.getElementById('p-icon').src = data.icon || "";
-            document.getElementById('p-name').textContent = data.name;
-            document.getElementById('p-bio').textContent = data.bio || "自己紹介はありません";
+        function initUI() {
+            document.getElementById('my-id-display').textContent = me.id;
+            document.getElementById('my-pin-display').textContent = myPin;
+            document.getElementById('my-name-side').textContent = me.name;
+            document.getElementById('my-avatar-side').src = me.icon || 'https://via.placeholder.com/32';
+            document.getElementById('my-avatar-side').className = `avatar ${me.isInvisible?'invisible':'online'}`;
+            document.getElementById('my-status-text').textContent = me.isInvisible ? '居留守中' : 'オンライン';
+            document.getElementById('set-name').value = me.name;
+            document.getElementById('set-bio').value = me.bio;
+            document.getElementById('set-icon').value = me.icon;
+            document.getElementById('inv-status').textContent = me.isInvisible ? 'ON' : 'OFF';
+            if(me.isAdmin) document.getElementById('admin-settings-section').style.display = 'block';
             
-            let badges = "";
-            let footer = "";
-            if (data.isAdmin) {
-                badges += goldBadge + ' <span style="color:var(--gold); font-size:10px;">管理者</span>';
-                footer = "このアカウントは管理者が所有しています";
-            } else if (data.isVerified) {
-                badges += blueBadge + ' <span style="color:var(--accent); font-size:10px;">認証済み</span>';
-                footer = "このアカウントは管理者によって認証されています";
-            }
-            document.getElementById('p-badges').innerHTML = badges;
-            document.getElementById('p-footer').textContent = footer;
-
-            const tools = document.getElementById('admin-tools');
-            if (userData.isAdmin && userData.id !== data.id) {
-                tools.classList.remove('hidden');
-                const vBtn = document.getElementById('verify-btn');
-                const isVer = verifiedList.includes(data.id);
-                vBtn.textContent = isVer ? "認証を解除する" : "認証マークを付与する";
-                vBtn.onclick = () => {
-                    if (isVer) verifiedList = verifiedList.filter(id => id !== data.id);
-                    else verifiedList.push(data.id);
-                    saveData();
-                    if (activeDM) activeDM.send({type:'verify_sync', list: verifiedList});
-                    alert("更新しました");
-                    m.style.display = 'none';
-                };
-            } else { tools.classList.add('hidden'); }
-            m.style.display = 'flex';
+            let badges = me.isAdmin ? goldBadge : (me.isVerified ? blueBadge : "");
+            document.getElementById('my-badge-side').innerHTML = badges;
         }
 
-        // --- 通信ロジック ---
-        myPeer.on('connection', conn => {
-            if (conn.metadata?.isGlobal) { setupGlobalConn(conn); return; }
-            if (confirm(conn.metadata?.name + "から接続リクエストがあります。承認しますか？")) setupDM(conn);
-        });
-        pinPeer.on('connection', conn => setupDM(conn));
+        // --- 通信コア ---
+        peer.on('connection', conn => handleIncoming(conn));
+        pinPeer.on('connection', conn => handleIncoming(conn));
 
-        function connectViaPin() {
+        function handleIncoming(conn) {
+            if(conn.metadata?.isGlobal) { setupGlobal(conn); return; }
+            
+            const reqName = conn.metadata?.name || "誰か";
+            if(confirm(`${reqName}（@${conn.metadata?.id}）から接続リクエストが届きました。承認しますか？`)) {
+                setupDM(conn);
+            } else {
+                conn.send({type:'req_denied'});
+                conn.close();
+            }
+        }
+
+        function requestConnect() {
             const pin = document.getElementById('target-pin').value;
-            const conn = myPeer.connect('SKR_PIN_' + pin, { metadata: { name: userData.name, initiator: true } });
+            const conn = peer.connect('SH5_PIN_'+pin, { metadata: { id: me.id, name: me.name, isRequest: true } });
+            conn.on('open', () => {
+                alert("リクエストを送信しました。相手が承認するまでお待ちください。");
+            });
+            conn.on('data', data => {
+                if(data.type === 'req_denied') alert("リクエストが拒否されました。");
+            });
             setupDM(conn);
         }
 
         function setupDM(conn) {
-            activeDM = conn;
+            activeConn = conn;
             conn.on('open', () => {
-                document.getElementById('dm-init').classList.add('hidden');
-                document.getElementById('messages-dm').classList.remove('hidden');
-                document.getElementById('dm-input-area').classList.remove('hidden');
-                addMsg('dm', {name: 'システム', content: '接続されました', system: true});
-                conn.send({type:'profile_sync', data: userData});
-                if(userData.isAdmin) conn.send({type:'verify_sync', list: verifiedList});
+                showView('dm');
+                document.getElementById('dm-init').style.display = 'none';
+                document.getElementById('msg-dm').style.display = 'block';
+                document.getElementById('dm-input-area').style.display = 'block';
+                document.getElementById('dm-close-btn').style.display = 'block';
+                addMsg('dm', {name:'システム', icon:sysIcon, content:'接続が確立されました', system:true, isAdmin:true});
+                
+                // 初回同期
+                conn.send({type:'sync', me: me});
+                if(me.isAdmin) conn.send({type:'v_list', list: verifiedUsers});
             });
+
             conn.on('data', data => {
-                if (data.type === 'msg') addMsg('dm', data);
-                if (data.type === 'profile_sync') {
-                    activeDM.peerData = data.data;
-                    let f = friends.find(x => x.id === data.data.id);
-                    if (!f) { friends.push(data.data); saveData(); renderFriends(); }
+                if(data.type === 'msg') addMsg('dm', data);
+                if(data.type === 'del') deleteMsgLocal('dm', data.msgId, data.originalText);
+                if(data.type === 'sync') {
+                    activeConn.peerData = data.me;
+                    updateFriendData(data.me);
                 }
-                if (data.type === 'verify_sync') {
-                    userData.isVerified = data.list.includes(userData.id);
-                    saveData(); updateMyUI();
+                if(data.type === 'v_list' && !me.isAdmin) {
+                    const wasVerified = me.isVerified;
+                    me.isVerified = data.list.includes(me.id);
+                    if(!wasVerified && me.isVerified) alert("アカウントが認証されました！");
+                    localStorage.setItem('sh5_me', JSON.stringify(me));
+                    initUI();
                 }
+                if(data.type === 'req_auth') {
+                    if(confirm(`${data.name}から認証リクエストが届きました。認証しますか？`)) {
+                        verifiedUsers.push(data.id);
+                        localStorage.setItem('sh5_vlist', JSON.stringify(verifiedUsers));
+                        activeConn.send({type:'v_list', list: verifiedUsers});
+                    }
+                }
+            });
+
+            conn.on('close', () => {
+                addMsg('dm', {name:'システム', icon:sysIcon, content:'切断されました', system:true, isAdmin:true});
+                setTimeout(closeDM, 2000);
             });
         }
 
-        // --- グローバル ---
-        function connectGlobal() {
-            const relayId = 'SKR_GLOBAL_RELAY_v4';
-            const conn = myPeer.connect(relayId, { metadata: { isGlobal: true, name: userData.name } });
-            setupGlobalConn(conn);
-            const relay = new Peer(relayId, peerConfig);
-            relay.on('connection', c => setupGlobalConn(c));
-            document.getElementById('global-status').textContent = "オンライン";
+        function closeDM() {
+            if(activeConn) activeConn.close();
+            activeConn = null;
+            document.getElementById('dm-init').style.display = 'block';
+            document.getElementById('msg-dm').style.display = 'none';
+            document.getElementById('dm-input-area').style.display = 'none';
+            document.getElementById('dm-close-btn').style.display = 'none';
+            document.getElementById('msg-dm').innerHTML = "";
+            showView('dm');
         }
 
-        function setupGlobalConn(conn) {
-            if (!globalConnPool.find(c => c.peer === conn.peer)) {
-                globalConnPool.push(conn);
-                conn.on('data', data => { if (data.type === 'global_msg') addMsg('global', data); });
+        // --- メッセージ操作 ---
+        function sendMsg(target) {
+            const input = document.getElementById('in-'+target);
+            if(!input.value.trim()) return;
+            const msgId = Date.now();
+            const data = {
+                type: 'msg', msgId, content: input.value,
+                name: me.name, id: me.id, icon: me.icon,
+                isAdmin: me.isAdmin, isVerified: me.isVerified,
+                time: new Date().toLocaleTimeString()
+            };
+
+            if(target === 'global') {
+                globalConns.forEach(c => c.send(data));
+            } else if(activeConn) {
+                activeConn.send(data);
+            }
+            addMsg(target, data);
+            input.value = "";
+        }
+
+        function addMsg(target, d) {
+            const area = document.getElementById('msg-'+target);
+            const div = document.createElement('div');
+            div.className = 'msg-row';
+            div.id = `msg-${d.msgId}`;
+            
+            const badge = d.isAdmin ? goldBadge : (d.isVerified ? blueBadge : "");
+            const nameColor = d.isAdmin ? 'color:var(--gold)' : 'color:#fff';
+
+            div.innerHTML = `
+                <img src="${d.icon || 'https://via.placeholder.com/40'}" class="avatar" style="width:40px; height:40px;" onclick="viewProfileById('${d.id}', '${d.name}', '${d.icon}', '${d.isAdmin}', '${d.isVerified}')">
+                <div class="msg-content">
+                    <div class="msg-header">
+                        <span class="msg-name" style="${nameColor}" onclick="viewProfileById('${d.id}', '${d.name}', '${d.icon}', '${d.isAdmin}', '${d.isVerified}')">${d.name}</span>
+                        ${badge}
+                        <span style="font-size:11px; color:var(--text-sub); margin-left:8px;">${d.time || ''}</span>
+                    </div>
+                    <div class="msg-text" id="text-${d.msgId}">${d.content}</div>
+                </div>
+                ${(d.id === me.id || me.isAdmin) && !d.system ? `<button onclick="requestDelete('${target}', ${d.msgId})" style="background:none; border:none; color:var(--text-sub); cursor:pointer; font-size:10px;">削除</button>` : ''}
+            `;
+            area.appendChild(div);
+            area.scrollTop = area.scrollHeight;
+        }
+
+        function requestDelete(target, msgId) {
+            let notify = true;
+            if(me.isAdmin) notify = confirm("削除したことを通知しますか？（キャンセルでサイレント削除）");
+            const originalText = document.getElementById(`text-${msgId}`).textContent;
+            
+            const data = { type: 'del', msgId, notify, originalText };
+            if(target === 'global') globalConns.forEach(c => c.send(data));
+            else if(activeConn) activeConn.send(data);
+            
+            deleteMsgLocal(target, msgId, originalText);
+        }
+
+        function deleteMsgLocal(target, msgId, originalText) {
+            const textEl = document.getElementById(`text-${msgId}`);
+            if(!textEl) return;
+            
+            if(me.isAdmin) {
+                textEl.innerHTML = `<span class="msg-deleted">削除されました</span> <span class="admin-peek">(内容: ${originalText})</span>`;
+            } else {
+                textEl.innerHTML = `<span class="msg-deleted">メッセージは削除されました</span>`;
             }
         }
 
-        function sendGlobal() {
-            const input = document.getElementById('input-global');
-            if (!input.value.trim()) return;
-            const data = { type:'global_msg', content:input.value, name:userData.name, icon:userData.icon, id:userData.id, isAdmin:userData.isAdmin, isVerified:userData.isVerified };
-            globalConnPool.forEach(c => c.send(data));
-            addMsg('global', data);
-            input.value = "";
-        }
-
-        function sendDM() {
-            const input = document.getElementById('input-dm');
-            if (!input.value.trim() || !activeDM) return;
-            const data = { type:'msg', content:input.value, name:userData.name, icon:userData.icon, id:userData.id, isAdmin:userData.isAdmin, isVerified:userData.isVerified };
-            activeDM.send(data);
-            addMsg('dm', data);
-            input.value = "";
-        }
-
-        function addMsg(target, data) {
-            const container = document.getElementById('messages-' + target);
-            const row = document.createElement('div');
-            row.className = 'msg-row';
-            const badge = data.isAdmin ? goldBadge : (data.isVerified ? blueBadge : "");
-            const nameColor = data.isAdmin ? "var(--gold)" : "var(--text-main)";
+        // --- プロフィール & フレンド ---
+        function viewProfileById(id, name, icon, isAdmin, isVerified) {
+            const modal = document.getElementById('profile-modal');
+            document.getElementById('modal-avatar').src = icon || 'https://via.placeholder.com/80';
+            document.getElementById('modal-name').textContent = name;
+            document.getElementById('modal-bio').textContent = (id === me.id ? me.bio : "通信相手のプロフィールです。");
             
-            row.innerHTML = `
-                <img src="${data.icon || ''}" class="user-icon" onclick='showUserProfile(${JSON.stringify(data)})'>
-                <div class="msg-body">
-                    <div class="msg-header">
-                        <span class="msg-name" style="color:${nameColor}" onclick='showUserProfile(${JSON.stringify(data)})'>${data.name}</span>
-                        ${badge}
-                        <span style="font-size:9px; color:var(--text-sub); margin-left:5px;">@${data.id || 'sys'}</span>
-                    </div>
-                    <div style="font-size:15px; line-height:1.4;">${data.content}</div>
-                </div>
-            `;
-            container.appendChild(row);
-            container.scrollTop = container.scrollHeight;
+            let badges = (isAdmin === 'true' || isAdmin === true) ? goldBadge : ((isVerified === 'true' || isVerified === true) ? blueBadge : "");
+            document.getElementById('modal-badges').innerHTML = badges;
+
+            // ステータス表示
+            let statusHTML = `<span class="status-dot" style="background:var(--online)"></span> オンライン`;
+            if(me.isAdmin && id !== me.id) {
+                // 管理者なら相手の本当の状態を推測（PeerJSの接続状態など）
+                statusHTML += ` <span style="color:var(--gold); font-size:10px;">(正確な状態を監視中)</span>`;
+            }
+            document.getElementById('modal-status-label').innerHTML = statusHTML;
+
+            // アクションボタン
+            const actions = document.getElementById('modal-actions');
+            actions.innerHTML = "";
+            if(id !== me.id) {
+                if(!friends.find(f => f.id === id)) {
+                    const btn = document.createElement('button');
+                    btn.className = "btn btn-primary";
+                    btn.textContent = "フレンドに追加";
+                    btn.onclick = () => addFriend(id, name, icon, isAdmin, isVerified);
+                    actions.appendChild(btn);
+                } else {
+                    const btn = document.createElement('button');
+                    btn.className = "btn btn-ghost";
+                    btn.style.borderColor = "var(--danger)";
+                    btn.textContent = "フレンド削除";
+                    btn.onclick = () => removeFriend(id);
+                    actions.appendChild(btn);
+                }
+
+                // 認証リクエスト（自分が未認証、相手が管理者の場合のみ）
+                if(!me.isVerified && !me.isAdmin && (isAdmin === 'true' || isAdmin === true)) {
+                    const authBtn = document.createElement('button');
+                    authBtn.className = "btn btn-ghost";
+                    authBtn.style.marginLeft = "10px";
+                    authBtn.textContent = "認証をリクエスト";
+                    authBtn.onclick = () => {
+                        if(activeConn) {
+                            activeConn.send({type:'req_auth', id:me.id, name:me.name});
+                            alert("リクエストを送りました");
+                        } else { alert("相手と接続中のみリクエスト可能です"); }
+                    };
+                    actions.appendChild(authBtn);
+                }
+            }
+            
+            modal.style.display = 'flex';
+        }
+
+        function addFriend(id, name, icon, isAdmin, isVerified) {
+            if(!friends.find(f => f.id === id)) {
+                friends.push({id, name, icon, isAdmin, isVerified, online: true});
+                localStorage.setItem('sh5_friends', JSON.stringify(friends));
+                renderFriends();
+                alert("フレンドに追加しました");
+            }
+        }
+
+        function removeFriend(id) {
+            friends = friends.filter(f => f.id !== id);
+            localStorage.setItem('sh5_friends', JSON.stringify(friends));
+            renderFriends();
+            document.getElementById('profile-modal').style.display = 'none';
         }
 
         function renderFriends() {
             const list = document.getElementById('friend-list');
-            list.innerHTML = friends.length === 0 ? '<div style="color:var(--text-sub); text-align:center; padding:20px;">フレンドはいません</div>' : '';
+            list.innerHTML = "";
             friends.forEach(f => {
                 const div = document.createElement('div');
-                div.className = 'msg-row';
-                div.style.alignItems = 'center';
+                div.className = "nav-item";
+                div.style.justifyContent = "space-between";
+                const badge = f.isAdmin ? goldBadge : (f.isVerified ? blueBadge : "");
                 div.innerHTML = `
-                    <img src="${f.icon || ''}" class="user-icon" onclick='showUserProfile(${JSON.stringify(f)})'>
-                    <div style="flex-grow:1; font-weight:bold;" onclick='showUserProfile(${JSON.stringify(f)})'>${f.name}</div>
-                    <button class="btn" style="width:auto; margin:0; padding:5px 15px; font-size:12px;" onclick="startDM('${f.id}')">話す</button>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <img src="${f.icon || ''}" class="avatar ${f.online?'online':'offline'}" style="width:30px; height:30px;">
+                        <span style="font-weight:bold;">${f.name}</span>${badge}
+                    </div>
+                    <button class="btn-ghost" style="padding:2px 8px; font-size:10px;" onclick="viewProfileById('${f.id}','${f.name}','${f.icon}',${f.isAdmin},${f.isVerified})">詳細</button>
                 `;
                 list.appendChild(div);
             });
         }
 
-        function showView(v) {
-            document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
-            document.getElementById('view-' + v).classList.add('active');
-            document.getElementById('nav-' + v).classList.add('active');
-            if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open');
+        // --- 設定 ---
+        function updateProfile(key, val) {
+            me[key] = val;
+            localStorage.setItem('sh5_me', JSON.stringify(me));
+            initUI();
+            if(activeConn) activeConn.send({type:'sync', me:me});
+        }
+
+        function toggleInvisible() {
+            me.isInvisible = !me.isInvisible;
+            localStorage.setItem('sh5_me', JSON.stringify(me));
+            initUI();
+            if(activeConn) activeConn.send({type:'sync', me:me});
         }
 
         function promptAdmin() {
-            if (prompt("管理者パスコードを入力してください") === '9999999999') {
-                userData.isAdmin = true; saveData();
-                alert("管理者として認証されました");
+            if(prompt("管理者キーを入力") === '9999999999') {
+                me.isAdmin = true;
+                localStorage.setItem('sh5_me', JSON.stringify(me));
                 location.reload();
             }
         }
-        function startDM(id) {
-            showView('dm');
-            const conn = myPeer.connect('SKR_' + id, { metadata: { name: userData.name, initiator: true } });
-            setupDM(conn);
+
+        function buildAdminSettings() {
+            const grid = document.getElementById('admin-grid');
+            for(let i=1; i<=30; i++) {
+                const btn = document.createElement('button');
+                btn.className = "btn btn-ghost";
+                btn.style.fontSize = "10px";
+                btn.textContent = `管理項目 #${i}`;
+                btn.onclick = () => alert(`設定項目 ${i} が有効になりました (模擬動作)`);
+                grid.appendChild(btn);
+            }
+        }
+
+        // --- その他 ---
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+        function showView(v) {
+            document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+            document.getElementById('view-'+v).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            if(window.innerWidth <= 768) toggleSidebar();
+        }
+
+        function connectGlobal() {
+            const relayId = 'SH5_GLOBAL_V1';
+            const conn = peer.connect(relayId, { metadata: { isGlobal: true, name: me.name } });
+            setupGlobal(conn);
+            const relay = new Peer(relayId);
+            relay.on('connection', c => setupGlobal(c));
+        }
+
+        function setupGlobal(conn) {
+            if(!globalConns.find(c => c.peer === conn.peer)) {
+                globalConns.push(conn);
+                conn.on('data', data => {
+                    if(data.type === 'msg') addMsg('global', data);
+                    if(data.type === 'del') deleteMsgLocal('global', data.msgId, data.originalText);
+                });
+                document.getElementById('global-count').textContent = `${globalConns.length + 1}人が閲覧中`;
+            }
         }
     </script>
 </body>
