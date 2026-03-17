@@ -3,392 +3,491 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Shirokuma v4</title>
+    <title>Shirokuma Professional</title>
     <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         :root {
-            --main-color: #5865f2; /* デフォルト：紫 */
-            --bg-deep: #1e1f22;
-            --bg-side: #2b2d31;
-            --bg-main: #313338;
-            --bg-input: #383a40;
-            --text-white: #f2f3f5;
-            --text-gray: #b5bac1;
+            --bg-black: #000000;
+            --bg-dark: #121212;
+            --bg-card: #1c1c1c;
+            --accent: #1d9bf0;
             --gold: #d4af37;
-            --verified: #1d9bf0;
+            --text-main: #e7e9ea;
+            --text-sub: #71767b;
+            --border: #2f3336;
         }
 
         body {
-            font-family: 'Hiragino Sans', 'Meiryo', sans-serif;
-            margin: 0; padding: 0;
-            background-color: var(--bg-deep);
-            color: var(--text-white);
+            font-family: sans-serif;
+            margin: 0; background: var(--bg-black); color: var(--text-main);
             display: flex; height: 100dvh; overflow: hidden;
         }
 
-        /* --- Layout --- */
+        /* サイドバー */
         #sidebar {
-            width: 280px; background-color: var(--bg-side);
-            display: flex; flex-direction: column; transition: transform 0.3s ease;
-            z-index: 1000; flex-shrink: 0; border-right: 1px solid rgba(0,0,0,0.2);
-        }
-
-        #main-area {
-            flex-grow: 1; display: flex; flex-direction: column;
-            background-color: var(--bg-main); position: relative;
-        }
-
-        #sidebar-overlay {
-            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999;
+            width: 260px; background: var(--bg-black);
+            display: flex; flex-direction: column; border-right: 1px solid var(--border);
+            transition: 0.3s; flex-shrink: 0;
         }
 
         @media screen and (max-width: 768px) {
-            #sidebar { position: absolute; height: 100%; transform: translateX(-100%); }
-            #sidebar.open { transform: translateX(0); }
-            #sidebar.open + #sidebar-overlay { display: block; }
+            #sidebar { position: absolute; left: -260px; height: 100%; z-index: 1000; }
+            #sidebar.open { left: 0; }
         }
-
-        /* --- Sidebar UI --- */
-        .brand-section { padding: 20px; border-bottom: 1px solid rgba(0,0,0,0.1); }
-        .brand-name { font-size: 22px; font-weight: 900; color: #fff; margin-bottom: 4px; }
-        .my-status { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--text-gray); }
 
         .nav-btn {
-            width: 90%; margin: 4px auto; padding: 12px 15px; border: none; border-radius: 6px;
-            background: none; color: var(--text-gray); text-align: left;
-            cursor: pointer; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 10px;
+            width: 100%; padding: 15px 20px; border: none; background: none;
+            color: var(--text-main); text-align: left; cursor: pointer; font-size: 16px;
         }
-        .nav-btn:hover { background: rgba(255,255,255,0.05); color: #fff; }
-        .nav-btn.active { background: var(--main-color); color: #fff; }
+        .nav-btn:hover { background: var(--bg-card); }
+        .nav-btn.active { font-weight: bold; color: var(--accent); }
 
-        /* --- Icons --- */
-        .badge { width: 16px; height: 16px; vertical-align: middle; }
-        .gold-check { fill: var(--gold); }
-        .blue-check { fill: var(--verified); }
+        /* メインエリア */
+        #main-area { flex-grow: 1; display: flex; flex-direction: column; position: relative; }
 
-        /* --- Content Views --- */
-        .view { display: none; flex-direction: column; height: 100%; overflow-y: auto; padding: 20px; box-sizing: border-box; }
+        .view { display: none; flex-direction: column; height: 100%; }
         .view.active { display: flex; }
 
-        .card { background: var(--bg-side); border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.05); }
-
-        /* --- Chat UI --- */
-        #messages { flex-grow: 1; overflow-y: auto; padding: 10px 0; }
-        .msg-row { padding: 8px 20px; }
-        .msg-row:hover { background: rgba(0,0,0,0.1); }
-        .msg-meta { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: bold; }
-        .msg-content { margin-top: 4px; color: #dcddde; line-height: 1.4; word-break: break-all; }
-
-        .input-area { padding: 10px 20px 20px; }
-        .input-wrapper { background: var(--bg-input); border-radius: 8px; padding: 10px 15px; display: flex; align-items: center; gap: 12px; }
-        #chat-text { flex-grow: 1; background: none; border: none; color: #fff; outline: none; font-size: 15px; }
-
-        /* --- Form Elements --- */
-        input[type="text"], input[type="password"] {
-            width: 100%; padding: 10px; border-radius: 4px; border: none; background: var(--bg-deep); color: #fff; margin-top: 8px; box-sizing: border-box;
+        header {
+            padding: 10px 15px; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
         }
-        .btn-action { background: var(--main-color); color: white; border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; }
 
-        /* --- Modals --- */
-        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 2000; }
-        .modal-box { background: var(--bg-main); padding: 30px; border-radius: 8px; width: 90%; max-width: 400px; text-align: center; }
+        /* チャットエリア */
+        #messages-global, #messages-dm { flex-grow: 1; overflow-y: auto; padding: 10px 0; }
+        .msg-row { padding: 8px 15px; border-bottom: 1px solid #111; display: flex; gap: 12px; }
+        .user-icon { width: 40px; height: 40px; border-radius: 50%; background: #333; cursor: pointer; object-fit: cover; flex-shrink: 0; }
+        .msg-body { flex-grow: 1; }
+        .msg-header { display: flex; align-items: center; gap: 5px; margin-bottom: 2px; }
+        .msg-name { font-weight: bold; cursor: pointer; }
+        .msg-name:hover { text-decoration: underline; }
+
+        /* バッジ */
+        .badge { font-size: 10px; font-weight: bold; padding: 1px 4px; border-radius: 2px; }
+        .badge-gold { color: var(--gold); border: 1px solid var(--gold); }
+        .badge-blue { color: var(--accent); border: 1px solid var(--accent); }
+
+        /* 入力欄 */
+        .input-area { padding: 10px 15px; border-top: 1px solid var(--border); display: flex; gap: 10px; }
+        input[type="text"], textarea {
+            background: var(--bg-card); border: 1px solid var(--border); color: #fff;
+            padding: 8px 12px; border-radius: 20px; outline: none;
+        }
+
+        /* モーダル */
+        .modal {
+            position: fixed; inset: 0; background: rgba(255,255,255,0.1);
+            display: none; align-items: center; justify-content: center; z-index: 2000;
+        }
+        .modal-content {
+            background: var(--bg-black); border: 1px solid var(--border);
+            padding: 25px; border-radius: 15px; width: 90%; max-width: 400px;
+        }
+
+        /* プロフィール用 */
+        .profile-header { text-align: center; margin-bottom: 15px; }
+        .profile-icon-large { width: 80px; height: 80px; border-radius: 50%; background: #333; margin: 0 auto 10px; object-fit: cover; }
+        .profile-bio { font-size: 14px; color: var(--text-sub); margin: 10px 0; white-space: pre-wrap; }
+        .profile-desc { font-size: 11px; padding: 8px; background: var(--bg-card); border-radius: 5px; margin-top: 10px; }
+
+        .btn {
+            background: var(--accent); color: #fff; border: none; padding: 10px;
+            border-radius: 20px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px;
+        }
+        .btn-sub { background: #333; }
+
+        .hidden { display: none; }
     </style>
 </head>
 <body>
 
-    <div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+    <div id="setup-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="setup-title">ACCOUNT SETUP</h2>
+            <div style="text-align: center;">
+                <img id="setup-icon-preview" class="profile-icon-large" src="" alt="">
+                <input type="file" id="icon-input" accept="image/*" style="display:none" onchange="previewIcon(this)">
+                <button class="btn btn-sub" style="width:auto; font-size:12px;" onclick="document.getElementById('icon-input').click()">UPLOAD ICON</button>
+            </div>
+            <input type="text" id="setup-name" class="input-area" style="width:100%; box-sizing:border-box; margin-top:15px;" placeholder="NAME">
+            <textarea id="setup-bio" class="input-area" style="width:100%; box-sizing:border-box; margin-top:10px; border-radius:10px; height:80px;" placeholder="BIO"></textarea>
+            <button class="btn" onclick="saveProfile()">SAVE</button>
+        </div>
+    </div>
 
-    <svg style="display:none;">
-        <symbol id="icon-check" viewBox="0 0 24 24">
-            <path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.97-.81-4.01s-2.62-1.27-4.01-.81C14.67 2.53 13.43 1.65 12 1.65s-2.67.88-3.34 2.19c-1.39-.46-2.97-.2-4.01.81s-1.27 2.62-.81 4.01C2.53 9.33 1.65 10.57 1.65 12s.88 2.67 2.19 3.34c-.46 1.39-.2 2.97.81 4.01s2.62 1.27 4.01.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.97.2 4.01-.81s1.27-2.62.81-4.01c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2l-3.53-3.53 1.41-1.41 2.12 2.12 4.96-4.96 1.41 1.41-6.37 6.37z"/>
-        </symbol>
-    </svg>
-
-    <div id="name-modal" class="modal" style="display:none;">
-        <div class="modal-box">
-            <h2>Shirokuma</h2>
-            <p style="color:var(--text-gray)">利用する名前を入力してください</p>
-            <input type="text" id="initial-name" placeholder="大谷翔平">
-            <button class="btn-action" onclick="saveName()">はじめる</button>
+    <div id="profile-modal" class="modal" onclick="closeModal(this)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="profile-header">
+                <img id="p-icon" class="profile-icon-large" src="">
+                <h3 id="p-name"></h3>
+                <div id="p-badges"></div>
+            </div>
+            <div id="p-bio" class="profile-bio"></div>
+            <div id="p-footer" class="profile-desc"></div>
+            
+            <div id="admin-tools" class="hidden" style="margin-top:15px; border-top:1px solid var(--border); padding-top:10px;">
+                <p style="font-size:10px; font-weight:bold;">ADMIN TOOLS</p>
+                <button id="verify-btn" class="btn" style="background:var(--gold); color:black;">VERIFY USER</button>
+            </div>
+            <button class="btn btn-sub" onclick="closeModal(document.getElementById('profile-modal'))">CLOSE</button>
         </div>
     </div>
 
     <aside id="sidebar">
-        <div class="brand-section">
-            <div class="brand-name">Shirokuma</div>
-            <div class="my-status">
-                <span id="my-name-display" style="font-weight:bold">---</span>
-                <span id="my-badges-display"></span>
-            </div>
+        <div style="padding: 20px; border-bottom: 1px solid var(--border);">
+            <div style="font-weight: bold; font-size: 20px; letter-spacing: 1px;">SHIROKUMA</div>
+            <div style="font-size: 11px; color: var(--text-sub); margin-top: 5px;">ID: <span id="my-id-display"></span></div>
         </div>
-
-        <nav style="flex-grow: 1; padding-top: 10px;">
-            <button class="nav-btn active" onclick="showView('chat-view')">💬 チャット</button>
-            <button class="nav-btn" onclick="showView('friend-view')">👥 フレンド</button>
-            <button class="nav-btn" onclick="showView('settings-view')">⚙️ 設定</button>
-            <button class="nav-btn mobile-only" style="color:var(--text-gray); margin-top:20px;" onclick="toggleSidebar()">✕ 閉じる</button>
+        <nav style="flex-grow: 1;">
+            <button id="nav-global" class="nav-btn active" onclick="showView('global')">GLOBAL CHAT</button>
+            <button id="nav-dm" class="nav-btn" onclick="showView('dm')">DIRECT MESSAGE</button>
+            <button id="nav-friends" class="nav-btn" onclick="showView('friends')">FRIENDS</button>
+            <button id="nav-settings" class="nav-btn" onclick="showView('settings')">SETTINGS</button>
         </nav>
-
-        <div style="padding: 10px; font-size: 9px; color: #4e5058; text-align: center;">ID: <span id="my-id-display"></span></div>
     </aside>
 
     <main id="main-area">
-        <div id="chat-view" class="view active">
-            <header style="display:flex; align-items:center; gap:15px; margin-bottom:10px; flex-shrink:0;">
-                <button onclick="toggleSidebar()" style="background:none; border:none; color:#fff; font-size:24px; cursor:pointer;">≡</button>
-                <h3 id="chat-title" style="margin:0">チャットルーム</h3>
-                <div id="chat-actions" style="display:none; margin-left:auto; gap:10px;">
-                    <button class="btn-action" style="width:auto; padding:5px 15px; margin:0" onclick="sendFriendRequest()">フレンド申請</button>
-                    <button class="btn-action" style="width:auto; padding:5px 15px; margin:0; background:#ed4245" onclick="location.reload()">切断</button>
-                </div>
+        <div id="view-global" class="view active">
+            <header>
+                <button onclick="toggleSidebar()" class="nav-btn" style="width:auto; padding:5px;">MENU</button>
+                <span>GLOBAL</span>
+                <span id="global-status" style="font-size:10px; color:var(--accent);">CONNECTING...</span>
             </header>
-            <div id="messages"></div>
-            <div id="chat-input-area" class="input-area" style="display:none;">
-                <div class="input-wrapper">
-                    <button onclick="document.getElementById('chat-image').click()" style="background:none; border:none; color:var(--text-gray); font-size:20px; cursor:pointer;">⊕</button>
-                    <input type="file" id="chat-image" style="display:none;" onchange="sendImage()">
-                    <input type="text" id="chat-text" placeholder="メッセージを送信" onkeypress="if(event.key==='Enter')sendText()">
-                    <button onclick="sendText()" style="background:none; border:none; color:var(--main-color); font-weight:bold; cursor:pointer;">送信</button>
-                </div>
+            <div id="messages-global"></div>
+            <div class="input-area">
+                <input type="text" id="input-global" style="flex-grow:1;" placeholder="MESSAGE" onkeypress="if(event.key==='Enter')sendGlobal()">
+                <button onclick="sendGlobal()" class="btn" style="width:auto; margin:0; padding:5px 15px;">SEND</button>
             </div>
         </div>
 
-        <div id="friend-view" class="view">
-            <h2>フレンド</h2>
-            <div class="card">
-                <h3>PIN接続</h3>
-                <p style="font-size:14px; color:var(--text-gray)">相手のPINを入力して接続を開始します</p>
-                <input type="text" id="target-pin" placeholder="5桁のPIN">
-                <button class="btn-action" onclick="connectViaPin()">接続リクエストを送信</button>
-                <p style="font-size:12px; margin-top:10px;">あなたのPIN: <strong id="my-pin-display"></strong></p>
+        <div id="view-dm" class="view">
+            <header>
+                <button onclick="toggleSidebar()" class="nav-btn" style="width:auto; padding:5px;">MENU</button>
+                <span id="dm-target-name">DIRECT MESSAGE</span>
+                <button onclick="disconnectDM()" class="btn-sub badge" style="width:auto;">DISCONNECT</button>
+            </header>
+            
+            <div id="dm-init" style="padding:20px; text-align:center;">
+                <div class="profile-desc" style="margin-bottom:20px;">ENTER PIN TO CONNECT</div>
+                <input type="text" id="target-pin" class="input-box" style="width:200px; text-align:center; font-size:20px;" placeholder="00000" maxlength="5">
+                <button class="btn" style="width:200px;" onclick="connectViaPin()">CONNECT</button>
+                <div style="margin-top:20px; font-size:12px; color:var(--text-sub);">YOUR PIN: <strong id="my-pin-display">-----</strong></div>
             </div>
-            <div id="friend-list"></div>
+
+            <div id="messages-dm" class="hidden"></div>
+            <div id="dm-input-area" class="input-area hidden">
+                <input type="text" id="input-dm" style="flex-grow:1;" placeholder="MESSAGE" onkeypress="if(event.key==='Enter')sendDM()">
+                <button onclick="sendDM()" class="btn" style="width:auto; margin:0; padding:5px 15px;">SEND</button>
+            </div>
         </div>
 
-        <div id="settings-view" class="view">
-            <h2>設定</h2>
-            <div class="card">
-                <h3>プロフィール</h3>
-                <label style="font-size:12px; color:var(--text-gray)">表示名</label>
-                <input type="text" id="set-name" onchange="updateName(this.value)">
-                
-                <label style="font-size:12px; color:var(--text-gray); display:block; margin-top:15px;">メインカラー</label>
-                <div style="display:flex; gap:10px; margin-top:8px;">
-                    <input type="color" id="main-color-picker" style="height:40px; width:60px; border:none; background:none; cursor:pointer;" onchange="updateMainColor(this.value)">
-                    <input type="text" id="main-color-hex" placeholder="#5865f2" style="margin:0; flex-grow:1" onchange="updateMainColor(this.value)">
-                </div>
-            </div>
+        <div id="view-friends" class="view">
+            <header><span>FRIENDS</span></header>
+            <div id="friend-list" style="padding:15px;"></div>
+        </div>
 
-            <div class="card" id="admin-auth-card">
-                <h3>管理者設定</h3>
-                <button class="btn-action" style="background:#4e5058" onclick="promptAdmin()">管理者モードを有効にする</button>
-            </div>
-
-            <div id="admin-panel" class="card" style="display:none; border:1px solid var(--gold)">
-                <h3 style="color:var(--gold)">管理者パネル</h3>
-                <div style="margin-bottom:15px;">
-                    <label style="font-size:12px;">管理者の名前の色</label>
-                    <input type="text" id="admin-color-set" placeholder="例: gold" onchange="updateAdminColor(this.value)">
-                </div>
-                <div style="margin-bottom:15px;">
-                    <label style="font-size:12px;">対話相手の操作</label>
-                    <div style="display:flex; gap:10px; margin-top:8px;">
-                        <button class="btn-action" style="background:var(--verified)" onclick="toggleVerification(true)">認証付与</button>
-                        <button class="btn-action" style="background:#4e5058" onclick="toggleVerification(false)">認証解除</button>
-                    </div>
-                </div>
-                <button class="btn-action" style="background:var(--gold); color:black" onclick="sendSystemMsg()">📢 システム告知を送信</button>
+        <div id="view-settings" class="view">
+            <header><span>SETTINGS</span></header>
+            <div style="padding:20px;">
+                <button class="btn btn-sub" onclick="openSetup()">EDIT PROFILE</button>
+                <button class="btn btn-sub" style="margin-top:10px;" onclick="promptAdmin()">ADMIN LOGIN</button>
             </div>
         </div>
     </main>
 
     <script>
-        // Data & State
-        let myId = localStorage.getItem('s4_id') || Math.floor(Math.random()*9e9+1e9).toString();
-        localStorage.setItem('s4_id', myId);
-        let myName = localStorage.getItem('s4_name') || "";
-        let isAdmin = localStorage.getItem('s4_admin') === 'true';
-        let isVerified = localStorage.getItem('s4_verified') === 'true';
-        let mainColor = localStorage.getItem('s4_main_color') || '#5865f2';
-        let adminNameColor = localStorage.getItem('s4_admin_name_color') || '#ffffff';
-        let friends = JSON.parse(localStorage.getItem('s4_friends') || '[]');
+        // --- データ管理 ---
+        let userData = JSON.parse(localStorage.getItem('sk_user') || '{"name":"","bio":"","icon":"","id":"","isAdmin":false,"isVerified":false}');
+        let friends = JSON.parse(localStorage.getItem('sk_friends') || '[]');
+        let verifiedList = JSON.parse(localStorage.getItem('sk_verified_ids') || '[]'); // 管理者用: 認証済みIDリスト
 
-        const goldBadge = `<svg class="badge gold-check"><use href="#icon-check"/></svg>`;
-        const blueBadge = `<svg class="badge blue-check"><use href="#icon-check"/></svg>`;
+        if (!userData.id) {
+            userData.id = Math.floor(Math.random() * 9e9 + 1e9).toString();
+            saveData();
+        }
 
-        // Peer
-        const peer = new Peer('SKR_'+myId);
-        const myPin = Math.floor(Math.random()*90000+10000).toString();
-        const peerPin = new Peer('SKR_PIN_'+myPin);
-        let activeConn = null;
+        function saveData() {
+            localStorage.setItem('sk_user', JSON.stringify(userData));
+            localStorage.setItem('sk_friends', JSON.stringify(friends));
+            localStorage.setItem('sk_verified_ids', JSON.stringify(verifiedList));
+        }
 
+        // --- 通信設定 ---
+        const peerConfig = {
+            config: {
+                'iceServers': [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' }
+                ]
+            },
+            debug: 1
+        };
+
+        const myPeer = new Peer('SKR_' + userData.id, peerConfig);
+        const myPin = Math.floor(Math.random() * 90000 + 10000).toString();
+        const pinPeer = new Peer('SKR_PIN_' + myPin, peerConfig);
+        
+        let globalConnPool = []; // グローバルチャットの簡易実装用
+        let activeDM = null;
+
+        // --- 初期化 ---
         window.onload = () => {
-            document.getElementById('my-id-display').textContent = myId;
+            document.getElementById('my-id-display').textContent = userData.id;
             document.getElementById('my-pin-display').textContent = myPin;
-            document.getElementById('set-name').value = myName;
-            document.getElementById('main-color-picker').value = mainColor;
-            document.getElementById('main-color-hex').value = mainColor;
-            if(!myName) document.getElementById('name-modal').style.display = 'flex';
+            if (!userData.name) openSetup();
             updateUI();
             renderFriends();
+            connectToGlobal();
         };
 
         function updateUI() {
-            document.getElementById('my-name-display').textContent = myName || "未設定";
-            document.documentElement.style.setProperty('--main-color', mainColor);
+            document.getElementById('nav-settings').textContent = userData.isAdmin ? "SETTINGS (ADMIN)" : "SETTINGS";
+        }
+
+        // --- プロフィール関連 ---
+        function openSetup() {
+            document.getElementById('setup-name').value = userData.name;
+            document.getElementById('setup-bio').value = userData.bio;
+            document.getElementById('setup-icon-preview').src = userData.icon || "";
+            document.getElementById('setup-modal').style.display = 'flex';
+        }
+
+        function previewIcon(input) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    document.getElementById('setup-icon-preview').src = e.target.result;
+                    userData.icon = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function saveProfile() {
+            userData.name = document.getElementById('setup-name').value.trim() || "USER";
+            userData.bio = document.getElementById('setup-bio').value.trim();
+            saveData();
+            document.getElementById('setup-modal').style.display = 'none';
+            alert("PROFILE SAVED");
+            location.reload();
+        }
+
+        function showUserProfile(data) {
+            const m = document.getElementById('profile-modal');
+            document.getElementById('p-icon').src = data.icon || "";
+            document.getElementById('p-name').textContent = data.name;
+            document.getElementById('p-bio').textContent = data.bio || "NO BIO";
             
             let badges = "";
-            if(isAdmin) {
-                badges += goldBadge;
-                document.getElementById('my-name-display').style.color = adminNameColor;
-                document.getElementById('admin-panel').style.display = 'block';
-                document.getElementById('admin-auth-card').style.display = 'none';
+            let footer = "";
+            if (data.isAdmin) {
+                badges += '<span class="badge badge-gold">OWNER</span>';
+                footer = "THIS ACCOUNT IS OWNED BY AN ADMINISTRATOR";
+            } else if (data.isVerified) {
+                badges += '<span class="badge badge-blue">VERIFIED</span>';
+                footer = "THIS ACCOUNT IS VERIFIED BY AN ADMINISTRATOR";
+            }
+            document.getElementById('p-badges').innerHTML = badges;
+            document.getElementById('p-footer').textContent = footer;
+
+            // 管理者ツール
+            const tools = document.getElementById('admin-tools');
+            if (userData.isAdmin && userData.id !== data.id) {
+                tools.classList.remove('hidden');
+                const vBtn = document.getElementById('verify-btn');
+                const isAlreadyVer = verifiedList.includes(data.id);
+                vBtn.textContent = isAlreadyVer ? "REVOKE VERIFICATION" : "VERIFY USER";
+                vBtn.onclick = () => toggleVerifyUser(data.id);
             } else {
-                document.getElementById('my-name-display').style.color = 'inherit';
-                if(isVerified) badges += blueBadge;
+                tools.classList.add('hidden');
             }
-            document.getElementById('my-badges-display').innerHTML = badges;
+            m.style.display = 'flex';
         }
 
-        function saveName() {
-            const val = document.getElementById('initial-name').value.trim() || "大谷翔平";
-            myName = val;
-            localStorage.setItem('s4_name', val);
-            document.getElementById('name-modal').style.display = 'none';
-            updateUI();
-        }
-
-        function updateName(val) {
-            myName = val;
-            localStorage.setItem('s4_name', val);
-            updateUI();
-            if(activeConn) activeConn.send({type:'name_update', id:myId, newName:val});
-        }
-
-        function updateMainColor(val) {
-            mainColor = val;
-            localStorage.setItem('s4_main_color', val);
-            document.getElementById('main-color-picker').value = val;
-            document.getElementById('main-color-hex').value = val;
-            updateUI();
-        }
-
-        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
-
-        function showView(viewId) {
-            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(viewId).classList.add('active');
-            event.currentTarget.classList.add('active');
-            if(window.innerWidth <= 768) toggleSidebar();
-        }
-
-        // Logic
-        peer.on('connection', c => {
-            if(!c.metadata?.isInitiator) {
-                if(!confirm("接続リクエストを承認しますか？")) { c.close(); return; }
+        function toggleVerifyUser(targetId) {
+            if (verifiedList.includes(targetId)) {
+                verifiedList = verifiedList.filter(id => id !== targetId);
+            } else {
+                verifiedList.push(targetId);
             }
-            setupChat(c);
-        });
-        peerPin.on('connection', c => setupChat(c));
+            saveData();
+            // リアルタイム反映
+            if (activeDM) activeDM.send({type:'verify_sync', list: verifiedList});
+            alert("VERIFICATION UPDATED");
+            closeModal(document.getElementById('profile-modal'));
+        }
+
+        // --- 通信コア ---
+        myPeer.on('connection', conn => handleIncoming(conn));
+        pinPeer.on('connection', conn => handleIncoming(conn));
+
+        function handleIncoming(conn) {
+            if (conn.metadata?.isGlobal) {
+                setupGlobalConn(conn);
+                return;
+            }
+            if (confirm("CONNECT REQUEST FROM " + (conn.metadata?.name || "UNKNOWN") + "?")) {
+                setupDM(conn);
+            } else {
+                conn.close();
+            }
+        }
 
         function connectViaPin() {
             const pin = document.getElementById('target-pin').value;
-            if(!pin) return;
-            setupChat(peerPin.connect('SKR_PIN_'+pin, {metadata:{isInitiator:true}}));
+            const conn = myPeer.connect('SKR_PIN_' + pin, { metadata: { name: userData.name, initiator: true } });
+            setupDM(conn);
         }
 
-        function setupChat(conn) {
-            activeConn = conn;
+        function setupDM(conn) {
+            activeDM = conn;
             conn.on('open', () => {
-                showView('chat-view');
-                document.getElementById('chat-input-area').style.display = 'block';
-                document.getElementById('chat-actions').style.display = 'flex';
-                addMsg({name:'System', content:'接続されました', system:true});
+                document.getElementById('dm-init').classList.add('hidden');
+                document.getElementById('messages-dm').classList.remove('hidden');
+                document.getElementById('dm-input-area').classList.remove('hidden');
+                addMsg('dm', {name: 'SYSTEM', content: 'CONNECTED', system: true});
+                
+                // 初回にプロフィールを交換
+                conn.send({type:'profile_sync', data: userData});
+                
+                // 管理者の場合、認証リストを同期
+                if(userData.isAdmin) conn.send({type:'verify_sync', list: verifiedList});
             });
+
             conn.on('data', data => {
-                if(data.type === 'msg') addMsg(data);
-                if(data.type === 'verify_change') {
-                    isVerified = data.status;
-                    localStorage.setItem('s4_verified', isVerified);
+                if (data.type === 'msg') addMsg('dm', data);
+                if (data.type === 'profile_sync') {
+                    // 相手の情報を一時保存/更新
+                    let friend = friends.find(f => f.id === data.data.id);
+                    if (friend) {
+                        Object.assign(friend, data.data);
+                        saveData();
+                        renderFriends();
+                    }
+                    activeDM.peerData = data.data; // プロフィール表示用に保持
+                }
+                if (data.type === 'verify_sync') {
+                    // 管理者から送られてきた認証リストに基づいて自分の状態を更新
+                    if (data.list.includes(userData.id)) {
+                        userData.isVerified = true;
+                    } else {
+                        userData.isVerified = false;
+                    }
+                    saveData();
                     updateUI();
                 }
-                if(data.type === 'friend_req') {
-                    if(confirm(data.name + "からのフレンド申請を承認しますか？")) {
-                        addFriend(data.id, data.name);
-                        activeConn.send({type:'friend_confirm', id:myId, name:myName});
-                    }
-                }
-                if(data.type === 'friend_confirm') { addFriend(data.id, data.name); alert("フレンドになりました！"); }
-                if(data.type === 'name_update') {
-                    let f = friends.find(x => x.id === data.id);
-                    if(f) { f.name = data.newName; renderFriends(); }
-                }
             });
         }
 
-        function sendText() {
-            const input = document.getElementById('chat-text');
-            if(!input.value.trim() || !activeConn) return;
-            const data = { 
-                type:'msg', name:myName, id:myId, content:input.value, 
-                admin:isAdmin, verified:isVerified, color:adminNameColor 
-            };
-            activeConn.send(data);
-            addMsg(data);
-            input.value = '';
+        // --- グローバルチャット ---
+        // ※ サーバーレスのため、特定の固定IDに接続を試みる「簡易メッシュ」方式
+        function connectToGlobal() {
+            const globalId = 'SKR_GLOBAL_RELAY_v4';
+            const conn = myPeer.connect(globalId, { metadata: { isGlobal: true, name: userData.name } });
+            setupGlobalConn(conn);
+            
+            // 自分がリレーになるための待機（誰かが既にリレーなら失敗するが問題ない）
+            const relay = new Peer(globalId, peerConfig);
+            relay.on('connection', c => setupGlobalConn(c));
+            
+            document.getElementById('global-status').textContent = "ONLINE";
         }
 
-        function addMsg(d) {
-            const box = document.getElementById('messages');
+        function setupGlobalConn(conn) {
+            if (!globalConnPool.find(c => c.peer === conn.peer)) {
+                globalConnPool.push(conn);
+                conn.on('data', data => {
+                    if (data.type === 'global_msg') addMsg('global', data);
+                });
+            }
+        }
+
+        function sendGlobal() {
+            const input = document.getElementById('input-global');
+            if (!input.value.trim()) return;
+            const data = { 
+                type: 'global_msg', content: input.value, 
+                name: userData.name, icon: userData.icon, id: userData.id,
+                isAdmin: userData.isAdmin, isVerified: userData.isVerified 
+            };
+            globalConnPool.forEach(c => c.send(data));
+            addMsg('global', data);
+            input.value = "";
+        }
+
+        function sendDM() {
+            const input = document.getElementById('input-dm');
+            if (!input.value.trim() || !activeDM) return;
+            const data = { 
+                type: 'msg', content: input.value, 
+                name: userData.name, icon: userData.icon, id: userData.id,
+                isAdmin: userData.isAdmin, isVerified: userData.isVerified 
+            };
+            activeDM.send(data);
+            addMsg('dm', data);
+            input.value = "";
+        }
+
+        // --- UI 操作 ---
+        function addMsg(target, data) {
+            const container = document.getElementById('messages-' + target);
             const row = document.createElement('div');
             row.className = 'msg-row';
-            let badges = d.admin ? goldBadge : (d.verified ? blueBadge : "");
-            let nameStyle = d.admin ? `style="color:${d.color}"` : "";
+            
+            const badge = data.isAdmin ? '<span class="badge badge-gold">OWNER</span>' : (data.isVerified ? '<span class="badge badge-blue">VERIFIED</span>' : "");
+            
             row.innerHTML = `
-                <div class="msg-meta">
-                    <span ${nameStyle}>${d.name}</span>${badges}
-                    <span style="font-size:11px; color:var(--text-gray); font-weight:normal;">@${d.id || 'sys'}</span>
+                <img src="${data.icon || ''}" class="user-icon" onclick='showUserProfile(${JSON.stringify(data)})'>
+                <div class="msg-body">
+                    <div class="msg-header">
+                        <span class="msg-name" onclick='showUserProfile(${JSON.stringify(data)})'>${data.name}</span>
+                        ${badge}
+                        <span style="font-size:9px; color:var(--text-sub);">@${data.id || 'SYS'}</span>
+                    </div>
+                    <div>${data.content}</div>
                 </div>
-                <div class="msg-content">${d.content}</div>
             `;
-            box.appendChild(row);
-            box.scrollTop = box.scrollHeight;
+            container.appendChild(row);
+            container.scrollTop = container.scrollHeight;
         }
 
-        // Admin & Others
-        function promptAdmin() {
-            if(prompt("パスコードを入力") === '9999999999') {
-                isAdmin = true; localStorage.setItem('s4_admin', 'true'); updateUI();
-            }
-        }
-        function updateAdminColor(val) { adminNameColor = val; localStorage.setItem('s4_admin_name_color', val); updateUI(); }
-        function toggleVerification(status) { activeConn?.send({type:'verify_change', status}); }
-        function sendSystemMsg() {
-            let t = prompt("告知内容");
-            if(t) {
-                let d = {type:'msg', name:'SYSTEM', id:'ROOT', content:'📢 '+t, admin:true, color:'var(--gold)'};
-                activeConn.send(d); addMsg(d);
-            }
-        }
-        function addFriend(id, name) {
-            if(!friends.some(f => f.id === id)) {
-                friends.push({id, name}); localStorage.setItem('s4_friends', JSON.stringify(friends)); renderFriends();
-            }
-        }
         function renderFriends() {
             const list = document.getElementById('friend-list');
-            list.innerHTML = '';
+            list.innerHTML = friends.length === 0 ? '<div class="profile-desc">NO FRIENDS YET</div>' : '';
             friends.forEach(f => {
                 const div = document.createElement('div');
-                div.className = 'card';
-                div.style.display = 'flex'; div.style.justifyContent = 'space-between'; div.style.alignItems = 'center';
-                div.innerHTML = `<span>${f.name} (@${f.id})</span><button class="btn-action" style="width:auto; margin:0; padding:5px 15px;" onclick="connectToFriend('${f.id}')">接続</button>`;
+                div.className = 'msg-row';
+                div.style.alignItems = 'center';
+                div.innerHTML = `
+                    <img src="${f.icon || ''}" class="user-icon" onclick='showUserProfile(${JSON.stringify(f)})'>
+                    <div style="flex-grow:1" onclick='showUserProfile(${JSON.stringify(f)})'>${f.name}</div>
+                    <button class="badge" style="background:var(--accent); border:none; color:#fff; cursor:pointer;" onclick="startDM('${f.id}')">TALK</button>
+                `;
                 list.appendChild(div);
             });
         }
-        function connectToFriend(id) { setupChat(peer.connect('SKR_'+id, {metadata:{isInitiator:true}})); }
-        function sendFriendRequest() { activeConn.send({type:'friend_req', id:myId, name:myName}); alert("申請を送信"); }
+
+        function showView(v) {
+            document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById('view-' + v).classList.add('active');
+            document.getElementById('nav-' + v).classList.add('active');
+            if (window.innerWidth <= 768) toggleSidebar();
+        }
+
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+        function closeModal(m) { m.style.display = 'none'; }
+
+        function promptAdmin() {
+            const p = prompt("ENTER ADMIN PIN");
+            if (p === '9999999999') {
+                userData.isAdmin = true;
+                saveData();
+                alert("ADMIN MODE ENABLED");
+                location.reload();
+            }
+        }
     </script>
 </body>
 </html>
