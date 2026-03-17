@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Shirokuma Pro v11</title>
+    <title>Shirokuma Pro v12</title>
     <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         :root {
@@ -61,6 +61,7 @@
         .input-field { background: #40444b; border-radius: 8px; padding: 10px; display: flex; align-items: center; gap: 10px; }
         input[type="text"] { background: none; border: none; color: #fff; outline: none; flex-grow: 1; }
 
+        /* バッジスタイル */
         .badge { width: 14px; height: 14px; margin-left: 4px; vertical-align: middle; }
 
         /* 通知トースト */
@@ -194,7 +195,7 @@
     </div>
 
     <script>
-        const STORAGE_KEY = 'shirokuma_pro_v11';
+        const STORAGE_KEY = 'shirokuma_pro_v12';
         let data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {
             me: { id: Math.floor(Math.random()*9e9+1e9).toString(), name: 'ゲスト', isAdmin: false, icon: '', bio: '' },
             friends: [],
@@ -206,9 +207,9 @@
         const goldBadge = `<svg class="badge" style="fill:var(--gold)"><use href="#icon-ver"/></svg>`;
         function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
 
-        const peer = new Peer('SH_V11_' + data.me.id);
+        const peer = new Peer('SH_V12_' + data.me.id);
         const myPin = Math.floor(Math.random()*90000+10000).toString();
-        const pinPeer = new Peer('SH_V11_PIN_' + myPin);
+        const pinPeer = new Peer('SH_V12_PIN_' + myPin);
         
         let activeConn = null;
         let globalConns = [];
@@ -264,7 +265,7 @@
         function requestConnectByPin() {
             const pin = document.getElementById('target-pin').value;
             showToast("接続申請を送信しました...");
-            const conn = peer.connect('SH_V11_PIN_' + pin, { metadata: { type: 'dm_req', ...data.me } });
+            const conn = peer.connect('SH_V12_PIN_' + pin, { metadata: { type: 'dm_req', ...data.me } });
             setupDM(conn);
         }
 
@@ -300,10 +301,17 @@
                 if(d.fileType.startsWith('image/')) contentHtml += `<img src="${d.file}" style="max-width:200px; border-radius:8px; cursor:pointer;" onclick="zoomImg('${d.file}')">`;
                 else contentHtml += `<a href="${d.file}" download="${d.fileName}" style="color:var(--accent); display:block; margin-top:5px;">📄 ${d.fileName}</a>`;
             }
+
+            // チャット欄の名前の横にバッジを追加
+            const badgeHtml = d.isAdmin ? goldBadge : "";
+
             div.innerHTML = `
                 <img src="${d.icon || 'https://via.placeholder.com/32'}" class="avatar ${d.isAdmin?'admin-shape':''}" onclick="viewProfileById('${d.id}','${d.name}','${d.icon}',${d.isAdmin},'${d.bio||''}')">
                 <div style="flex-grow:1;">
-                    <div style="font-size:12px; font-weight:bold; color:${d.isAdmin?'var(--gold)':'#fff'}">${d.name} <span style="font-weight:normal; opacity:0.4; font-size:10px; margin-left:5px;">${d.time||''}</span></div>
+                    <div style="font-size:12px; font-weight:bold; color:${d.isAdmin?'var(--gold)':'#fff'}">
+                        ${d.name}${badgeHtml} 
+                        <span style="font-weight:normal; opacity:0.4; font-size:10px; margin-left:5px;">${d.time||''}</span>
+                    </div>
                     ${contentHtml}
                 </div>`;
             area.appendChild(div);
@@ -311,7 +319,7 @@
         }
 
         function initGlobalChat() {
-            const G_ID = 'SH_V11_GLOBAL_ROOM';
+            const G_ID = 'SH_V12_GLOBAL_ROOM';
             const h = new Peer(G_ID);
             h.on('open', () => { isGlobalHost = true; document.getElementById('global-status').textContent = "ホストモード"; });
             h.on('connection', c => {
@@ -348,7 +356,7 @@
 
         function checkOnline() {
             data.friends.forEach(f => {
-                const c = peer.connect('SH_V11_' + f.id);
+                const c = peer.connect('SH_V12_' + f.id);
                 let t = setTimeout(() => { f.online = false; renderFriends(); }, 3000);
                 c.on('open', () => { clearTimeout(t); f.online = true; c.close(); renderFriends(); });
             });
@@ -369,7 +377,7 @@
                 fBtn.className = "btn btn-primary";
                 fBtn.textContent = data.friends.find(f => f.id === id) ? "フレンドです" : "フレンド申請";
                 fBtn.onclick = () => {
-                    const c = peer.connect('SH_V11_'+id, { metadata: { type: 'friend_req', ...data.me } });
+                    const c = peer.connect('SH_V12_'+id, { metadata: { type: 'friend_req', ...data.me } });
                     c.on('open', () => { showToast("申請送信！"); c.close(); });
                     modal.style.display = 'none';
                 };
@@ -396,14 +404,14 @@
             saveData(); initUI(); showToast("保存完了！");
         }
 
-        // --- 管理者認証 (修正済み) ---
+        // --- 管理者認証 ---
         function promptAdmin() {
             const now = Date.now();
             if(data.lockUntil > now) return alert(`ロック中: あと ${Math.ceil((data.lockUntil - now) / 60000)} 分`);
             
-            const key = prompt("管理者パスワードを入力してください (10桁)");
+            // ヒント表示を削除
+            const key = prompt("管理者パスワードを入力してください");
             
-            // パスワード判定を 9999999999 に修正
             if(key === "9999999999") { 
                 data.me.isAdmin = true; 
                 data.adminFails = 0; 
