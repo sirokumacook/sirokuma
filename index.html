@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shirokuma</title>
+    <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .tab-btn { padding: 10px 20px; cursor: pointer; background: #eee; border: 1px solid #ccc; }
+        .tab-btn.active { background: #fff; border-bottom: none; font-weight: bold; }
+        .tab-content { display: none; padding: 20px; border: 1px solid #ccc; margin-top: -1px; }
+        .tab-content.active { display: block; }
+        #chat-area { border: 2px solid #333; padding: 10px; margin-top: 20px; display: none; }
+        #messages { height: 200px; overflow-y: auto; border: 1px solid #ccc; margin-bottom: 10px; padding: 5px; }
+        img { max-width: 100%; border-radius: 8px; }
+        .friend-item { display: flex; justify-content: space-between; margin-bottom: 10px; padding: 10px; background: #f9f9f9; }
+        .status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; background: gray; }
+        .status-dot.online { background: green; }
+    </style>
+</head>
+<body>
+
+    <h1>Shirokuma</h1>
+    <p>あなたの10桁ID: <strong id="my-id-display">生成中...</strong></p>
+    <p>現在の5桁PIN: <strong id="my-pin-display">生成中...</strong></p>
+
+    <div>
+        <button class="tab-btn active" onclick="switchTab('pin-tab')">PIN接続</button>
+        <button class="tab-btn" onclick="switchTab('friend-tab')">フレンド</button>
+    </div>
+
+    <div id="pin-tab" class="tab-content active">
+        <h3>PINで接続</h3>
+        <input type="text" id="target-pin" placeholder="相手の5桁PINを入力" maxlength="5">
+        <button onclick="connectViaPin()">接続要求を送る</button>
+    </div>
+
+    <div id="friend-tab" class="tab-content">
+        <h3>フレンド一覧</h3>
+        <button onclick="checkFriendsStatus()">オンライン状態を更新</button>
+        <div id="friend-list"></div>
+    </div>
+
+    <div id="chat-area">
+        <h3>チャットルーム</h3>
+        <p>接続先: <span id="connected-peer-id"></span></p>
+        <div id="messages"></div>
+        <input type="text" id="chat-text" placeholder="メッセージやURLを入力">
+        <button onclick="sendText()">送信</button>
+        <br><br>
+        <input type="file" id="chat-image" accept="image/*">
+        <button onclick="sendImage()">写真を送信</button>
+        <br><br>
+        <button onclick="sendFriendRequest()">フレンド申請を送る</button>
+        <button onclick="disconnectChat()">切断</button>
+    </div>
+
+    <script>
+        // ストレージデータの読み込みと初期化
+        let myId = localStorage.getItem('shirokuma_id');
+        if (!myId) {
+            myId = Math.floor(1000000000 + Math.random() * 9000000000).toString();
+            localStorage.setItem('shirokuma_id', myId);
+        }
+        document.getElementById('my-id-display').textContent = myId;
+
+        let myPin = Math.floor(10000 + Math.random() * 90000).toString();
+        document.getElementById('my-pin-display').textContent = myPin;
+
+        let friends = JSON.parse(localStorage.getItem('shirokuma_friends') || '[]');
+        let activeConnection = null;
+
+        // PeerJSの初期化（ID用とPIN用の2つの待受を作成）
+        const peerId = new Peer('Shirokuma_ID_' + myId);
+        const peerPin = new Peer('Shirokuma_PIN_' + myPin);
+
+        peerId.on('connection', handleIncomingConnection);
+        peerPin.on('connection', handleIncomingConnection);
+
+        function handleIncomingConnection(conn) {
+            // pingによる状態確認の通信は画面に出さず即座に閉じる
+            if (conn.metadata && conn.metadata.type === 'ping') {
+                conn.on('open', () => {
+                    conn.send({ type: 'pong' });
+                    setTimeout(() => conn.close(), 500);
+                });
+                return;
+            }
+
+            if (confirm('接続要求がありました。受け入れますか？')) {
+                setupConnection(conn);
+            } else {
+                conn.close();
+            }
+        }
+
+        function connectViaPin() {
+            const pin = document.getElementById('target-pin').value;
+            if (pin.length !== 5) {
+                alert('5桁のPINを入力してください。');
+                return;
+            }
+            const conn = peerPin.connect('Shirokuma_PIN_' + pin, { metadata: { type: 'chat' } });
+            setupConnection(conn);
+        }
+
+        function connectToFriend(friendId) {
+            const conn = peerId.connect('Shirokuma_ID_' + friendId, { metadata: { type: 'chat' } });
+            setupConnection(conn);
+        }
+
+        function setupConnection(conn) {
+            activeConnection = conn;
+            conn.on('open', () => {
+                document.getElementById('chat-area').style.display = 'block';
+                document.getElementById('connected-peer-id').textContent = conn.peer.replace('Shirokuma_ID_', '').replace('Shirokuma_PIN_', '');
+                addMessage('システム', '接続しました');
+            });
+
+            conn.on('data', (data) => {
+                if (data.type === 'text') {
+                    addMessage('相手', autoLink(data.content));
+                } else if (data.type === 'image') {
+                    addMessage('相手', `<img src="${data.content}">`);
+                } else if (data.type === 'friend_request') {
+                    if (confirm(`相手（ID: ${data.id}）からフレンド申請が届きました。承認しますか？`)) {
+                        addFriend(data.id);
+                        alert('フレンドに追加しました。');
+                    }
+                }
+            });
+
+            conn.on('close', () => {
+                addMessage('システム', '切断されました');
+                document.getElementById('chat-area').style.display = 'none';
+                activeConnection = null;
+            });
+        }
+
+        function sendText() {
+            if (!activeConnection) return;
+            const input = document.getElementById('chat-text');
+            const text = input.value;
+            if (text.trim() === '') return;
+
+            activeConnection.send({ type: 'text', content: text });
+            addMessage('自分', autoLink(text));
+            input.value = '';
+        }
+
+        function sendImage() {
+            if (!activeConnection) return;
+            const fileInput = document.getElementById('chat-image');
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const base64Img = e.target.result;
+                activeConnection.send({ type: 'image', content: base64Img });
+                addMessage('自分', `<img src="${base64Img}">`);
+                fileInput.value = '';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function sendFriendRequest() {
+            if (!activeConnection) return;
+            activeConnection.send({ type: 'friend_request', id: myId });
+            alert('フレンド申請を送信しました。');
+        }
+
+        function addFriend(id) {
+            if (!friends.includes(id)) {
+                friends.push(id);
+                localStorage.setItem('shirokuma_friends', JSON.stringify(friends));
+                renderFriends();
+            }
+        }
+
+        function addMessage(sender, content) {
+            const msgDiv = document.createElement('div');
+            msgDiv.innerHTML = `<strong>${sender}:</strong> ${content}`;
+            document.getElementById('messages').appendChild(msgDiv);
+        }
+
+        function autoLink(text) {
+            const regex = /(https?:\/\/[^\s]+)/g;
+            return text.replace(regex, '<a href="$1" target="_blank">$1</a>');
+        }
+
+        function disconnectChat() {
+            if (activeConnection) {
+                activeConnection.close();
+                document.getElementById('chat-area').style.display = 'none';
+            }
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+            
+            if(tabId === 'friend-tab') {
+                renderFriends();
+                checkFriendsStatus();
+            }
+        }
+
+        function renderFriends() {
+            const list = document.getElementById('friend-list');
+            list.innerHTML = '';
+            friends.forEach(id => {
+                const item = document.createElement('div');
+                item.className = 'friend-item';
+                item.innerHTML = `
+                    <span>
+                        <span class="status-dot" id="status-${id}"></span> 
+                        ID: ${id}
+                    </span>
+                    <button onclick="connectToFriend('${id}')">接続</button>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function checkFriendsStatus() {
+            friends.forEach(id => {
+                const dot = document.getElementById(`status-${id}`);
+                if(dot) dot.classList.remove('online');
+
+                // 状態確認用のバックグラウンド通信
+                const pingConn = peerId.connect('Shirokuma_ID_' + id, { metadata: { type: 'ping' } });
+                pingConn.on('open', () => {
+                    if(dot) dot.classList.add('online');
+                });
+                pingConn.on('data', (data) => {
+                    if(data.type === 'pong') pingConn.close();
+                });
+                pingConn.on('error', () => {
+                    if(dot) dot.classList.remove('online');
+                });
+            });
+        }
+    </script>
+</body>
+</html>
