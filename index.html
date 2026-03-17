@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Shirokuma Pro v12</title>
+    <title>Shirokuma Pro v13</title>
     <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         :root {
@@ -34,6 +34,7 @@
 
         .brand { padding: 15px; font-weight: bold; font-size: 18px; border-bottom: 1px solid #222; }
         
+        /* アイコンタップでプロフィール表示 */
         .my-profile-brief {
             padding: 10px 15px; display: flex; align-items: center; gap: 10px;
             background: rgba(0,0,0,0.2); cursor: pointer; transition: 0.2s;
@@ -61,7 +62,6 @@
         .input-field { background: #40444b; border-radius: 8px; padding: 10px; display: flex; align-items: center; gap: 10px; }
         input[type="text"] { background: none; border: none; color: #fff; outline: none; flex-grow: 1; }
 
-        /* バッジスタイル */
         .badge { width: 14px; height: 14px; margin-left: 4px; vertical-align: middle; }
 
         /* 通知トースト */
@@ -178,7 +178,7 @@
 
     <div id="profile-modal" class="modal" onclick="this.style.display='none'">
         <div class="modal-box" onclick="event.stopPropagation()">
-            <div style="height:60px; background:var(--accent);"></div>
+            <div id="modal-banner" style="height:60px; background:var(--accent);"></div>
             <div style="position:relative; padding:50px 20px 20px;">
                 <img id="modal-avatar" class="avatar" style="width:80px; height:80px; position:absolute; top:-40px; left:20px; border:6px solid var(--bg-discord);" src="">
                 <h2 id="modal-name" style="margin:0;"></h2>
@@ -195,9 +195,9 @@
     </div>
 
     <script>
-        const STORAGE_KEY = 'shirokuma_pro_v12';
+        const STORAGE_KEY = 'shirokuma_pro_v13';
         let data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {
-            me: { id: Math.floor(Math.random()*9e9+1e9).toString(), name: 'ゲスト', isAdmin: false, icon: '', bio: '' },
+            me: { id: Math.floor(Math.random()*9e9+1e9).toString(), name: 'ゲスト', isAdmin: false, isVerified: false, icon: '', bio: '' },
             friends: [],
             pendingReqs: [],
             adminFails: 0,
@@ -205,15 +205,17 @@
         };
 
         const goldBadge = `<svg class="badge" style="fill:var(--gold)"><use href="#icon-ver"/></svg>`;
+        const blueBadge = `<svg class="badge" style="fill:var(--verify-blue)"><use href="#icon-ver"/></svg>`;
+        
         function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
 
-        const peer = new Peer('SH_V12_' + data.me.id);
+        // --- PeerJS セットアップ ---
+        const peer = new Peer('SH_V13_' + data.me.id);
         const myPin = Math.floor(Math.random()*90000+10000).toString();
-        const pinPeer = new Peer('SH_V12_PIN_' + myPin);
+        const pinPeer = new Peer('SH_V13_PIN_' + myPin);
         
         let activeConn = null;
         let globalConns = [];
-        let isGlobalHost = false;
 
         window.onload = () => {
             initUI();
@@ -228,47 +230,62 @@
             document.getElementById('my-name-side').textContent = data.me.name;
             document.getElementById('my-avatar-side').src = data.me.icon || 'https://via.placeholder.com/32';
             document.getElementById('my-avatar-side').className = `avatar online ${data.me.isAdmin ? 'admin-shape' : ''}`;
-            document.getElementById('my-badge-side').innerHTML = data.me.isAdmin ? goldBadge : "";
+            
+            // サイドバーのバッジ表示
+            let sideBadge = "";
+            if(data.me.isAdmin) sideBadge = goldBadge;
+            else if(data.me.isVerified) sideBadge = blueBadge;
+            document.getElementById('my-badge-side').innerHTML = sideBadge;
+            
             document.getElementById('setup-avatar-preview').src = data.me.icon || 'https://via.placeholder.com/80';
             document.getElementById('set-name').value = data.me.name;
             document.getElementById('set-bio').value = data.me.bio || "";
         }
 
-        // --- 通信コア ---
-        peer.on('connection', conn => {
-            if(conn.metadata?.type === 'friend_req') {
-                if(!data.pendingReqs.find(p => p.id === conn.metadata.id)) {
-                    data.pendingReqs.push(conn.metadata);
-                    saveData(); renderFriends();
-                    showToast("新しいフレンド申請！");
+        // --- 受信イベントの修正 ---
+        function handleIncomingConnection(conn) {
+            conn.on('data', (payload) => {
+                if(payload.type === 'msg') addMsg('dm', payload);
+                if(payload.type === 'friend_req') {
+                    if(!data.pendingReqs.find(p => p.id === payload.me.id)) {
+                        data.pendingReqs.push(payload.me);
+                        saveData(); renderFriends();
+                        showToast(`${payload.me.name}からフレンド申請！`);
+                    }
                 }
-            } else if(conn.metadata?.type === 'dm_req') {
-                if(confirm(`${conn.metadata.name}から接続申請。許可しますか？`)) setupDM(conn);
+            });
+
+            if(conn.metadata?.type === 'dm_req') {
+                if(confirm(`${conn.metadata.name}から接続申請。許可しますか？`)) {
+                    activeConn = conn;
+                    showView('dm');
+                    document.getElementById('dm-init').style.display = 'none';
+                    document.getElementById('msg-dm').style.display = 'block';
+                    document.getElementById('dm-input-area').style.display = 'block';
+                }
             }
-        });
+        }
 
-        pinPeer.on('connection', conn => {
-            if(confirm(`${conn.metadata.name}から接続申請。許可しますか？`)) setupDM(conn);
-        });
+        peer.on('connection', handleIncomingConnection);
+        pinPeer.on('connection', handleIncomingConnection);
 
-        function setupDM(conn) {
-            activeConn = conn;
+        function requestConnectByPin() {
+            const pin = document.getElementById('target-pin').value;
+            if(!pin) return;
+            showToast("PINで接続を試みています...");
+            const conn = peer.connect('SH_V13_PIN_' + pin, { metadata: { type: 'dm_req', ...data.me } });
             conn.on('open', () => {
+                activeConn = conn;
                 showView('dm');
                 document.getElementById('dm-init').style.display = 'none';
                 document.getElementById('msg-dm').style.display = 'block';
                 document.getElementById('dm-input-area').style.display = 'block';
+                showToast("接続に成功しました！");
             });
-            conn.on('data', d => { if(d.type === 'msg') addMsg('dm', d); });
+            handleIncomingConnection(conn);
         }
 
-        function requestConnectByPin() {
-            const pin = document.getElementById('target-pin').value;
-            showToast("接続申請を送信しました...");
-            const conn = peer.connect('SH_V12_PIN_' + pin, { metadata: { type: 'dm_req', ...data.me } });
-            setupDM(conn);
-        }
-
+        // --- メッセージ処理 ---
         function sendMsg(target) {
             const input = document.getElementById('in-' + target);
             if(!input.value.trim()) return;
@@ -277,19 +294,6 @@
             else if(activeConn) activeConn.send(msgData);
             addMsg(target, msgData);
             input.value = "";
-        }
-
-        function sendFile(target, input) {
-            const file = input.files[0];
-            if(!file || file.size > 2 * 1024 * 1024) return alert("2MB以下にしてください");
-            const reader = new FileReader();
-            reader.onload = e => {
-                const msgData = { type: 'msg', file: e.target.result, fileName: file.name, fileType: file.type, ...data.me, time: new Date().toLocaleTimeString() };
-                if(target === 'global') broadcastGlobal(msgData);
-                else if(activeConn) activeConn.send(msgData);
-                addMsg(target, msgData);
-            };
-            reader.readAsDataURL(file);
         }
 
         function addMsg(target, d) {
@@ -302,13 +306,14 @@
                 else contentHtml += `<a href="${d.file}" download="${d.fileName}" style="color:var(--accent); display:block; margin-top:5px;">📄 ${d.fileName}</a>`;
             }
 
-            // チャット欄の名前の横にバッジを追加
-            const badgeHtml = d.isAdmin ? goldBadge : "";
+            let badgeHtml = "";
+            if(d.isAdmin) badgeHtml = goldBadge;
+            else if(d.isVerified) badgeHtml = blueBadge;
 
             div.innerHTML = `
-                <img src="${d.icon || 'https://via.placeholder.com/32'}" class="avatar ${d.isAdmin?'admin-shape':''}" onclick="viewProfileById('${d.id}','${d.name}','${d.icon}',${d.isAdmin},'${d.bio||''}')">
+                <img src="${d.icon || 'https://via.placeholder.com/32'}" class="avatar ${d.isAdmin?'admin-shape':''}" onclick="viewProfileById('${d.id}','${d.name}','${d.icon}',${d.isAdmin},${d.isVerified},'${d.bio||''}')">
                 <div style="flex-grow:1;">
-                    <div style="font-size:12px; font-weight:bold; color:${d.isAdmin?'var(--gold)':'#fff'}">
+                    <div style="font-size:12px; font-weight:bold; color:${d.isAdmin?'var(--gold)':(d.isVerified?'var(--verify-blue)':'#fff')}">
                         ${d.name}${badgeHtml} 
                         <span style="font-weight:normal; opacity:0.4; font-size:10px; margin-left:5px;">${d.time||''}</span>
                     </div>
@@ -318,57 +323,75 @@
             area.scrollTop = area.scrollHeight;
         }
 
+        // --- グローバルチャット ---
         function initGlobalChat() {
-            const G_ID = 'SH_V12_GLOBAL_ROOM';
+            const G_ID = 'SH_V13_GLOBAL_ROOM';
             const h = new Peer(G_ID);
-            h.on('open', () => { isGlobalHost = true; document.getElementById('global-status').textContent = "ホストモード"; });
+            h.on('open', () => { document.getElementById('global-status').textContent = "ホスト接続"; });
             h.on('connection', c => {
                 globalConns.push(c);
-                document.getElementById('global-status').textContent = `接続中: ${globalConns.length}人`;
+                document.getElementById('global-status').textContent = `参加中: ${globalConns.length}人`;
                 c.on('data', d => { addMsg('global', d); broadcastGlobal(d, c.peer); });
             });
             h.on('error', () => {
                 const c = peer.connect(G_ID);
-                c.on('open', () => { globalConns = [c]; document.getElementById('global-status').textContent = "クライアント接続済み"; });
+                c.on('open', () => { globalConns = [c]; document.getElementById('global-status').textContent = "グローバル接続中"; });
                 c.on('data', d => addMsg('global', d));
             });
         }
         function broadcastGlobal(d, skipId) { globalConns.forEach(c => { if(c.peer !== skipId) c.send(d); }); }
 
+        // --- フレンド機能 ---
         function renderFriends() {
             const list = document.getElementById('friend-list');
             const reqs = document.getElementById('friend-requests');
             list.innerHTML = ""; reqs.innerHTML = "";
             data.pendingReqs.forEach(r => {
                 const d = document.createElement('div');
-                d.style = "padding:10px; background:rgba(88,101,242,0.1); display:flex; align-items:center; gap:10px;";
-                d.innerHTML = `<span style="flex-grow:1;">${r.name} 申請</span><button class="btn btn-primary" onclick="acceptFriend('${r.id}')">承認</button>`;
+                d.style = "padding:10px; background:rgba(88,101,242,0.1); display:flex; align-items:center; gap:10px; border-radius:8px; margin:5px;";
+                d.innerHTML = `<span style="flex-grow:1; font-size:13px;">${r.name} からの申請</span><button class="btn btn-primary" style="padding:5px 10px; font-size:12px;" onclick="acceptFriend('${r.id}')">承認</button>`;
                 reqs.appendChild(d);
             });
             data.friends.forEach(f => {
                 const d = document.createElement('div');
                 d.className = "nav-item";
                 d.innerHTML = `<img src="${f.icon || 'https://via.placeholder.com/32'}" class="avatar ${f.online?'online':''} ${f.isAdmin?'admin-shape':''}"><div><b>${f.name}</b><br><small>${f.online?'オンライン':'オフライン'}</small></div>`;
-                d.onclick = () => viewProfileById(f.id, f.name, f.icon, f.isAdmin, f.bio);
+                d.onclick = () => viewProfileById(f.id, f.name, f.icon, f.isAdmin, f.isVerified, f.bio);
                 list.appendChild(d);
             });
         }
 
         function checkOnline() {
             data.friends.forEach(f => {
-                const c = peer.connect('SH_V12_' + f.id);
+                const c = peer.connect('SH_V13_' + f.id);
                 let t = setTimeout(() => { f.online = false; renderFriends(); }, 3000);
                 c.on('open', () => { clearTimeout(t); f.online = true; c.close(); renderFriends(); });
             });
         }
 
-        function viewProfileById(id, name, icon, isAdmin, bio) {
+        // --- プロフィール & 認証 ---
+        function openMyProfile() { 
+            viewProfileById(data.me.id, data.me.name, data.me.icon, data.me.isAdmin, data.me.isVerified, data.me.bio); 
+        }
+
+        function viewProfileById(id, name, icon, isAdmin, isVerified, bio) {
             const modal = document.getElementById('profile-modal');
             document.getElementById('modal-avatar').src = icon || 'https://via.placeholder.com/80';
             document.getElementById('modal-avatar').className = `avatar ${isAdmin ? 'admin-shape' : ''}`;
             document.getElementById('modal-name').textContent = name;
             document.getElementById('modal-bio').textContent = bio || "自己紹介はありません。";
-            document.getElementById('modal-badges').innerHTML = isAdmin ? goldBadge : "";
+            
+            let badgesHtml = "";
+            let footerText = "";
+            if(isAdmin) {
+                badgesHtml = goldBadge;
+                footerText = "このアカウントは運営によって認証されています";
+            } else if(isVerified) {
+                badgesHtml = blueBadge;
+                footerText = "このアカウントは管理者によって認証されています";
+            }
+            document.getElementById('modal-badges').innerHTML = badgesHtml;
+            document.getElementById('modal-footer').textContent = footerText;
             
             const actions = document.getElementById('modal-actions');
             actions.innerHTML = "";
@@ -377,15 +400,82 @@
                 fBtn.className = "btn btn-primary";
                 fBtn.textContent = data.friends.find(f => f.id === id) ? "フレンドです" : "フレンド申請";
                 fBtn.onclick = () => {
-                    const c = peer.connect('SH_V12_'+id, { metadata: { type: 'friend_req', ...data.me } });
-                    c.on('open', () => { showToast("申請送信！"); c.close(); });
+                    const c = peer.connect('SH_V13_'+id);
+                    c.on('open', () => {
+                        c.send({ type: 'friend_req', me: data.me });
+                        showToast("申請を送信しました！");
+                        setTimeout(() => c.close(), 1000);
+                    });
                     modal.style.display = 'none';
                 };
                 actions.appendChild(fBtn);
+
+                // 管理者なら相手を認証できる（シミュレーション用）
+                if(data.me.isAdmin && !isVerified && !isAdmin) {
+                    const vBtn = document.createElement('button');
+                    vBtn.className = "btn btn-ghost";
+                    vBtn.textContent = "認証アカウントに設定";
+                    vBtn.onclick = () => { alert("このユーザーを認証しました（※ローカル反映のみ）"); modal.style.display='none'; };
+                    actions.appendChild(vBtn);
+                }
             }
             modal.style.display = 'flex';
         }
 
+        function saveSettings() {
+            data.me.name = document.getElementById('set-name').value;
+            data.me.bio = document.getElementById('set-bio').value;
+            saveData(); initUI(); showToast("保存しました！");
+        }
+
+        function promptAdmin() {
+            const now = Date.now();
+            if(data.lockUntil > now) return alert(`ロック中: あと ${Math.ceil((data.lockUntil - now) / 60000)} 分`);
+            const key = prompt("管理者パスワードを入力してください");
+            
+            if(key === "9999999999") { 
+                data.me.isAdmin = true; 
+                data.me.isVerified = false;
+                data.adminFails = 0; saveData(); 
+                alert("運営アカウントとして認証されました。");
+                location.reload(); 
+            } else if(key === "verified123") { // テスト用の認証アカウントコード
+                data.me.isAdmin = false;
+                data.me.isVerified = true;
+                saveData();
+                alert("認証アカウントとして設定されました。");
+                location.reload();
+            } else if(key !== null) {
+                data.adminFails++;
+                if(data.adminFails >= 5) data.lockUntil = Date.now() + 30 * 60000;
+                saveData(); alert("不一致");
+            }
+        }
+
+        // --- 共通UI ---
+        function showView(v) {
+            document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+            document.getElementById('view-'+v).classList.add('active');
+            if(window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open');
+        }
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+        function acceptFriend(id) {
+            const r = data.pendingReqs.find(p => p.id === id);
+            if(r) { data.friends.push({...r, online:true}); data.pendingReqs = data.pendingReqs.filter(p => p.id !== id); saveData(); renderFriends(); showToast("フレンドになりました！"); }
+        }
+        function showToast(m) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.getElementById('toast-container').appendChild(t); setTimeout(() => t.remove(), 4000); }
+        function zoomImg(s) { document.getElementById('img-full').src = s; document.getElementById('img-modal').style.display = 'flex'; }
+        function sendFile(target, input) {
+            const file = input.files[0];
+            if(!file || file.size > 2 * 1024 * 1024) return alert("2MB以下にしてください");
+            const reader = new FileReader();
+            reader.onload = e => {
+                const msgData = { type: 'msg', file: e.target.result, fileName: file.name, fileType: file.type, ...data.me, time: new Date().toLocaleTimeString() };
+                if(target === 'global') broadcastGlobal(msgData); else if(activeConn) activeConn.send(msgData);
+                addMsg(target, msgData);
+            };
+            reader.readAsDataURL(file);
+        }
         function handleImageUpload(input) {
             const file = input.files[0];
             if(file) {
@@ -397,51 +487,6 @@
                 reader.readAsDataURL(file);
             }
         }
-
-        function saveSettings() {
-            data.me.name = document.getElementById('set-name').value;
-            data.me.bio = document.getElementById('set-bio').value;
-            saveData(); initUI(); showToast("保存完了！");
-        }
-
-        // --- 管理者認証 ---
-        function promptAdmin() {
-            const now = Date.now();
-            if(data.lockUntil > now) return alert(`ロック中: あと ${Math.ceil((data.lockUntil - now) / 60000)} 分`);
-            
-            // ヒント表示を削除
-            const key = prompt("管理者パスワードを入力してください");
-            
-            if(key === "9999999999") { 
-                data.me.isAdmin = true; 
-                data.adminFails = 0; 
-                saveData(); 
-                alert("管理者として認証されました。");
-                location.reload(); 
-            } else if(key !== null) {
-                data.adminFails++;
-                if(data.adminFails >= 5) {
-                    data.lockUntil = Date.now() + 30 * 60000;
-                    alert("5回失敗したため、30分間ロックされました。");
-                } else {
-                    alert(`パスワードが違います。 (あと ${5 - data.adminFails} 回)`);
-                }
-                saveData();
-            }
-        }
-
-        function showView(v) {
-            document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
-            document.getElementById('view-'+v).classList.add('active');
-            if(window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open');
-        }
-        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
-        function acceptFriend(id) {
-            const r = data.pendingReqs.find(p => p.id === id);
-            if(r) { data.friends.push({...r, online:true}); data.pendingReqs = data.pendingReqs.filter(p => p.id !== id); saveData(); renderFriends(); }
-        }
-        function showToast(m) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.getElementById('toast-container').appendChild(t); setTimeout(() => t.remove(), 4000); }
-        function zoomImg(s) { document.getElementById('img-full').src = s; document.getElementById('img-modal').style.display = 'flex'; }
     </script>
 </body>
 </html>
