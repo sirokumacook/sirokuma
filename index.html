@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Shirokuma Pro v10</title>
+    <title>Shirokuma Pro v11</title>
     <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         :root {
@@ -34,7 +34,6 @@
 
         .brand { padding: 15px; font-weight: bold; font-size: 18px; border-bottom: 1px solid #222; }
         
-        /* サイドバー内プロフィールエリア */
         .my-profile-brief {
             padding: 10px 15px; display: flex; align-items: center; gap: 10px;
             background: rgba(0,0,0,0.2); cursor: pointer; transition: 0.2s;
@@ -58,12 +57,10 @@
         .msg-row:hover { background: rgba(0,0,0,0.1); }
         .msg-text { font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; }
 
-        /* 入力エリア */
         .input-box-wrapper { padding: 0 20px 20px; }
         .input-field { background: #40444b; border-radius: 8px; padding: 10px; display: flex; align-items: center; gap: 10px; }
         input[type="text"] { background: none; border: none; color: #fff; outline: none; flex-grow: 1; }
 
-        /* バッジ */
         .badge { width: 14px; height: 14px; margin-left: 4px; vertical-align: middle; }
 
         /* 通知トースト */
@@ -197,7 +194,7 @@
     </div>
 
     <script>
-        const STORAGE_KEY = 'shirokuma_pro_v10';
+        const STORAGE_KEY = 'shirokuma_pro_v11';
         let data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {
             me: { id: Math.floor(Math.random()*9e9+1e9).toString(), name: 'ゲスト', isAdmin: false, icon: '', bio: '' },
             friends: [],
@@ -207,13 +204,11 @@
         };
 
         const goldBadge = `<svg class="badge" style="fill:var(--gold)"><use href="#icon-ver"/></svg>`;
-        const blueBadge = `<svg class="badge" style="fill:var(--verify-blue)"><use href="#icon-ver"/></svg>`;
-
         function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
 
-        const peer = new Peer('SH_V10_' + data.me.id);
+        const peer = new Peer('SH_V11_' + data.me.id);
         const myPin = Math.floor(Math.random()*90000+10000).toString();
-        const pinPeer = new Peer('SH_V10_PIN_' + myPin);
+        const pinPeer = new Peer('SH_V11_PIN_' + myPin);
         
         let activeConn = null;
         let globalConns = [];
@@ -233,7 +228,6 @@
             document.getElementById('my-avatar-side').src = data.me.icon || 'https://via.placeholder.com/32';
             document.getElementById('my-avatar-side').className = `avatar online ${data.me.isAdmin ? 'admin-shape' : ''}`;
             document.getElementById('my-badge-side').innerHTML = data.me.isAdmin ? goldBadge : "";
-            
             document.getElementById('setup-avatar-preview').src = data.me.icon || 'https://via.placeholder.com/80';
             document.getElementById('set-name').value = data.me.name;
             document.getElementById('set-bio').value = data.me.bio || "";
@@ -245,7 +239,7 @@
                 if(!data.pendingReqs.find(p => p.id === conn.metadata.id)) {
                     data.pendingReqs.push(conn.metadata);
                     saveData(); renderFriends();
-                    showToast("新しいフレンド申請が届きました！");
+                    showToast("新しいフレンド申請！");
                 }
             } else if(conn.metadata?.type === 'dm_req') {
                 if(confirm(`${conn.metadata.name}から接続申請。許可しますか？`)) setupDM(conn);
@@ -263,7 +257,6 @@
                 document.getElementById('dm-init').style.display = 'none';
                 document.getElementById('msg-dm').style.display = 'block';
                 document.getElementById('dm-input-area').style.display = 'block';
-                addMsg('dm', { name: 'システム', content: '接続されました', isAdmin: true });
             });
             conn.on('data', d => { if(d.type === 'msg') addMsg('dm', d); });
         }
@@ -271,11 +264,10 @@
         function requestConnectByPin() {
             const pin = document.getElementById('target-pin').value;
             showToast("接続申請を送信しました...");
-            const conn = peer.connect('SH_V10_PIN_' + pin, { metadata: { type: 'dm_req', ...data.me } });
+            const conn = peer.connect('SH_V11_PIN_' + pin, { metadata: { type: 'dm_req', ...data.me } });
             setupDM(conn);
         }
 
-        // --- メッセージ & ファイル ---
         function sendMsg(target) {
             const input = document.getElementById('in-' + target);
             if(!input.value.trim()) return;
@@ -288,7 +280,7 @@
 
         function sendFile(target, input) {
             const file = input.files[0];
-            if(!file || file.size > 2 * 1024 * 1024) return alert("2MB以下のファイルを選択してください");
+            if(!file || file.size > 2 * 1024 * 1024) return alert("2MB以下にしてください");
             const reader = new FileReader();
             reader.onload = e => {
                 const msgData = { type: 'msg', file: e.target.result, fileName: file.name, fileType: file.type, ...data.me, time: new Date().toLocaleTimeString() };
@@ -318,9 +310,8 @@
             area.scrollTop = area.scrollHeight;
         }
 
-        // --- グローバル & フレンド ---
         function initGlobalChat() {
-            const G_ID = 'SH_V10_GLOBAL_ROOM';
+            const G_ID = 'SH_V11_GLOBAL_ROOM';
             const h = new Peer(G_ID);
             h.on('open', () => { isGlobalHost = true; document.getElementById('global-status').textContent = "ホストモード"; });
             h.on('connection', c => {
@@ -343,7 +334,7 @@
             data.pendingReqs.forEach(r => {
                 const d = document.createElement('div');
                 d.style = "padding:10px; background:rgba(88,101,242,0.1); display:flex; align-items:center; gap:10px;";
-                d.innerHTML = `<span style="flex-grow:1;">${r.name} からの申請</span><button class="btn btn-primary" onclick="acceptFriend('${r.id}')">承認</button>`;
+                d.innerHTML = `<span style="flex-grow:1;">${r.name} 申請</span><button class="btn btn-primary" onclick="acceptFriend('${r.id}')">承認</button>`;
                 reqs.appendChild(d);
             });
             data.friends.forEach(f => {
@@ -357,14 +348,12 @@
 
         function checkOnline() {
             data.friends.forEach(f => {
-                const c = peer.connect('SH_V10_' + f.id);
+                const c = peer.connect('SH_V11_' + f.id);
                 let t = setTimeout(() => { f.online = false; renderFriends(); }, 3000);
                 c.on('open', () => { clearTimeout(t); f.online = true; c.close(); renderFriends(); });
             });
         }
 
-        // --- プロフィール & 設定 ---
-        function openMyProfile() { viewProfileById(data.me.id, data.me.name, data.me.icon, data.me.isAdmin, data.me.bio); }
         function viewProfileById(id, name, icon, isAdmin, bio) {
             const modal = document.getElementById('profile-modal');
             document.getElementById('modal-avatar').src = icon || 'https://via.placeholder.com/80';
@@ -372,7 +361,6 @@
             document.getElementById('modal-name').textContent = name;
             document.getElementById('modal-bio').textContent = bio || "自己紹介はありません。";
             document.getElementById('modal-badges').innerHTML = isAdmin ? goldBadge : "";
-            document.getElementById('modal-footer').textContent = isAdmin ? "このアカウントは運営によって認証されています" : "";
             
             const actions = document.getElementById('modal-actions');
             actions.innerHTML = "";
@@ -381,8 +369,8 @@
                 fBtn.className = "btn btn-primary";
                 fBtn.textContent = data.friends.find(f => f.id === id) ? "フレンドです" : "フレンド申請";
                 fBtn.onclick = () => {
-                    const c = peer.connect('SH_V10_'+id, { metadata: { type: 'friend_req', ...data.me } });
-                    c.on('open', () => { showToast("申請を送信しました！"); c.close(); });
+                    const c = peer.connect('SH_V11_'+id, { metadata: { type: 'friend_req', ...data.me } });
+                    c.on('open', () => { showToast("申請送信！"); c.close(); });
                     modal.style.display = 'none';
                 };
                 actions.appendChild(fBtn);
@@ -405,27 +393,39 @@
         function saveSettings() {
             data.me.name = document.getElementById('set-name').value;
             data.me.bio = document.getElementById('set-bio').value;
-            saveData(); initUI(); showToast("設定を保存しました！");
+            saveData(); initUI(); showToast("保存完了！");
         }
 
+        // --- 管理者認証 (修正済み) ---
         function promptAdmin() {
             const now = Date.now();
             if(data.lockUntil > now) return alert(`ロック中: あと ${Math.ceil((data.lockUntil - now) / 60000)} 分`);
-            const key = prompt("管理者キー");
-            if(key === "9999") { data.me.isAdmin = true; saveData(); location.reload(); }
-            else if(key !== null) {
+            
+            const key = prompt("管理者パスワードを入力してください (10桁)");
+            
+            // パスワード判定を 9999999999 に修正
+            if(key === "9999999999") { 
+                data.me.isAdmin = true; 
+                data.adminFails = 0; 
+                saveData(); 
+                alert("管理者として認証されました。");
+                location.reload(); 
+            } else if(key !== null) {
                 data.adminFails++;
-                if(data.adminFails >= 5) data.lockUntil = Date.now() + 30 * 60000;
-                saveData(); alert("認証失敗");
+                if(data.adminFails >= 5) {
+                    data.lockUntil = Date.now() + 30 * 60000;
+                    alert("5回失敗したため、30分間ロックされました。");
+                } else {
+                    alert(`パスワードが違います。 (あと ${5 - data.adminFails} 回)`);
+                }
+                saveData();
             }
         }
 
-        // --- UI操作 ---
         function showView(v) {
             document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
             document.getElementById('view-'+v).classList.add('active');
-            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            if(window.innerWidth <= 768) toggleSidebar();
+            if(window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open');
         }
         function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
         function acceptFriend(id) {
