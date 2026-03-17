@@ -3,194 +3,285 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Shirokuma Pro v9</title>
+    <title>Shirokuma Pro v7</title>
     <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         :root {
-            --bg-discord: #36393f; --bg-side: #2f3136; --bg-black: #000000;
-            --accent: #5865f2; --gold: #d4af37; --verify-blue: #1d9bf0;
-            --text-main: #dcddde; --text-sub: #8e9297; --danger: #ed4245;
-            --online: #3ba55d; --offline: #747f8d;
+            --bg-discord: #36393f;
+            --bg-side: #2f3136;
+            --bg-black: #000000;
+            --accent: #5865f2;
+            --gold: #d4af37;
+            --verify-blue: #1d9bf0;
+            --text-main: #dcddde;
+            --text-sub: #8e9297;
+            --danger: #ed4245;
+            --online: #3ba55d;
+            --offline: #747f8d;
         }
 
         body {
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-family: 'Whitney', 'Helvetica Neue', Helvetica, Arial, sans-serif;
             margin: 0; background: var(--bg-black); color: var(--text-main);
             display: flex; height: 100dvh; overflow: hidden;
         }
 
-        /* サイドバー */
-        #sidebar { width: 240px; background: var(--bg-side); display: flex; flex-direction: column; flex-shrink: 0; z-index: 100; transition: 0.3s; }
+        /* --- サイドバー --- */
+        #sidebar {
+            width: 240px; background: var(--bg-side);
+            display: flex; flex-direction: column; flex-shrink: 0;
+            transition: 0.3s; z-index: 100;
+        }
+
         #main-content { flex-grow: 1; display: flex; flex-direction: column; background: var(--bg-discord); position: relative; }
 
         @media screen and (max-width: 768px) {
             #sidebar { position: absolute; left: -240px; height: 100%; box-shadow: 2px 0 10px rgba(0,0,0,0.5); }
             #sidebar.open { left: 0; }
+            .mobile-back { display: block !important; }
         }
 
-        /* 共通UI */
+        .brand { padding: 15px; font-weight: bold; font-size: 18px; border-bottom: 1px solid #222; }
+        
+        .my-profile-brief {
+            padding: 10px 15px; display: flex; align-items: center; gap: 10px;
+            background: rgba(0,0,0,0.2); cursor: pointer; transition: 0.2s;
+        }
+        .my-profile-brief:hover { background: rgba(255,255,255,0.05); }
         .avatar { width: 32px; height: 32px; border-radius: 50%; background: #555; object-fit: cover; border: 2px solid transparent; cursor: pointer; }
         .avatar.online { border-color: var(--online); }
-        .avatar.admin-shape { border-radius: 22%; }
-        .nav-item { padding: 10px 15px; cursor: pointer; display: flex; align-items: center; gap: 10px; color: var(--text-sub); }
+        .avatar.invisible { border-color: var(--offline); }
+
+        .nav-item { padding: 10px 15px; cursor: pointer; display: flex; align-items: center; gap: 10px; color: var(--text-sub); font-size: 15px; }
         .nav-item:hover, .nav-item.active { background: #393c43; color: #fff; }
 
-        /* チャットエリア */
+        /* --- メイン画面 --- */
         .view { display: none; flex-direction: column; height: 100%; }
         .view.active { display: flex; }
-        header { height: 48px; display: flex; align-items: center; padding: 0 15px; border-bottom: 1px solid #26272b; }
-        .msg-area { flex-grow: 1; overflow-y: auto; padding: 10px 0; }
-        .msg-row { padding: 8px 20px; display: flex; gap: 12px; }
-        .msg-row:hover { background: rgba(0,0,0,0.1); }
-        .msg-text { font-size: 14px; line-height: 1.5; }
+        header { height: 48px; display: flex; align-items: center; padding: 0 15px; border-bottom: 1px solid #26272b; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
         
-        /* ファイル表示 */
-        .attached-img { max-width: 250px; max-height: 200px; border-radius: 8px; cursor: zoom-in; margin-top: 5px; border: 1px solid #444; }
-        .file-link { display: inline-flex; align-items: center; gap: 8px; background: #2f3136; padding: 10px; border-radius: 5px; text-decoration: none; color: var(--accent); font-size: 13px; margin-top: 5px; }
+        .msg-area { flex-grow: 1; overflow-y: auto; padding: 20px 0; }
+        .msg-row { padding: 5px 20px; position: relative; display: flex; gap: 15px; }
+        .msg-row:hover { background: rgba(4,4,5,0.07); }
+        .msg-content { flex-grow: 1; }
+        .msg-name { font-weight: bold; font-size: 15px; cursor: pointer; }
+        .msg-text { font-size: 14px; white-space: pre-wrap; word-break: break-all; line-height: 1.4; }
 
-        /* 入力欄 */
         .input-box-wrapper { padding: 0 20px 20px; }
-        .input-field { background: #40444b; border-radius: 8px; padding: 10px; display: flex; align-items: center; gap: 10px; }
+        .input-field { background: #40444b; border-radius: 8px; padding: 10px 15px; display: flex; align-items: center; gap: 10px; }
         input[type="text"] { background: none; border: none; color: #fff; outline: none; flex-grow: 1; }
-        .file-btn { cursor: pointer; opacity: 0.7; transition: 0.2s; }
-        .file-btn:hover { opacity: 1; }
 
-        /* 通知トースト */
-        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
-        .toast { background: var(--accent); color: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); animation: slideIn 0.3s forwards; }
-        @keyframes slideIn { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        /* --- アイコン類 --- */
+        .badge { width: 14px; height: 14px; vertical-align: middle; margin-left: 4px; }
+        .badge-gold { fill: var(--gold); }
+        .badge-blue { fill: var(--verify-blue); }
 
-        /* モーダル */
-        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 1000; }
-        .modal-box { background: var(--bg-discord); width: 90%; max-width: 440px; border-radius: 12px; overflow: hidden; }
+        /* --- モーダル --- */
+        .modal {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+            display: none; align-items: center; justify-content: center; z-index: 1000;
+        }
+        .modal-box { background: var(--bg-discord); width: 90%; max-width: 440px; border-radius: 8px; overflow: hidden; }
+        .modal-body { padding: 20px; }
         .btn { padding: 10px 20px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; }
         .btn-primary { background: var(--accent); color: white; }
+        .btn-ghost { background: none; color: white; border: 1px solid #4f545c; }
+        .btn-danger { background: var(--danger); color: white; }
+
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
     </style>
 </head>
 <body>
 
-    <div id="toast-container"></div>
+    <svg style="display:none">
+        <symbol id="icon-ver" viewBox="0 0 24 24"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.97-.81-4.01s-2.62-1.27-4.01-.81C14.67 2.53 13.43 1.65 12 1.65s-2.67.88-3.34 2.19c-1.39-.46-2.97-.2-4.01.81s-1.27 2.62-.81 4.01C2.53 9.33 1.65 10.57 1.65 12s.88 2.67 2.19 3.34c-.46 1.39-.2 2.97.81 4.01s2.62 1.27 4.01.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.97.2 4.01-.81s1.27-2.62.81-4.01c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2l-3.53-3.53 1.41-1.41 2.12 2.12 4.96-4.96 1.41 1.41-6.37 6.37z"/></symbol>
+    </svg>
 
     <aside id="sidebar">
-        <div style="padding:15px; font-weight:bold; font-size:18px;">Shirokuma v9</div>
-        <div class="nav-item active" onclick="showView('global')"># グローバル</div>
-        <div class="nav-item" onclick="showView('dm')">@ 個人チャット</div>
-        <div class="nav-item" onclick="showView('friends')">👥 フレンド</div>
-        <div class="nav-item" onclick="showView('settings')">⚙️ 設定</div>
-        <div style="margin-top:auto; padding:15px; font-size:10px; opacity:0.5;">ID: <span id="my-id-label"></span></div>
+        <div class="brand">Shirokuma Pro</div>
+        
+        <div class="my-profile-brief" onclick="openMyProfile()">
+            <img id="my-avatar-side" class="avatar" src="">
+            <div style="flex-grow:1; overflow:hidden;">
+                <div id="my-name-side" style="font-weight:bold; font-size:14px; overflow:hidden; text-overflow:ellipsis;">---</div>
+                <div style="font-size:11px; color:var(--text-sub);"><span id="my-status-text">オンライン</span></div>
+            </div>
+            <div id="my-badge-side"></div>
+        </div>
+
+        <nav style="margin-top:10px; flex-grow:1">
+            <div class="nav-item active" onclick="showView('global')"><span>#</span> グローバル</div>
+            <div class="nav-item" onclick="showView('dm')"><span>@</span> 個人チャット</div>
+            <div class="nav-item" onclick="showView('friends')"><span>👥</span> フレンド</div>
+            <div class="nav-item" onclick="showView('settings')"><span>⚙️</span> 設定</div>
+        </nav>
+
+        <div style="padding:10px; font-size:10px; color:#444; border-top:1px solid #222;">ID: <span id="my-id-display"></span></div>
     </aside>
 
     <main id="main-content">
         <div id="view-global" class="view active">
-            <header><div style="font-weight:bold;"># グローバルチャット</div></header>
+            <header>
+                <button class="btn-ghost mobile-back" style="display:none; margin-right:10px; padding:2px 8px;" onclick="toggleSidebar()">≡</button>
+                <div style="font-weight:bold;"># グローバル</div>
+                <div id="global-count" style="margin-left:auto; font-size:12px; color:var(--text-sub);">0人が接続中</div>
+            </header>
             <div id="msg-global" class="msg-area"></div>
             <div class="input-box-wrapper">
                 <div class="input-field">
-                    <label for="file-global" class="file-btn">📎</label>
-                    <input type="file" id="file-global" style="display:none" onchange="sendFile('global', this)">
-                    <input type="text" id="in-global" placeholder="メッセージを送信" onkeypress="if(event.key==='Enter')sendMsg('global')">
+                    <input type="text" id="in-global" placeholder="#グローバルへメッセージを送信" onkeypress="if(event.key==='Enter')sendMsg('global')">
                 </div>
             </div>
         </div>
 
         <div id="view-dm" class="view">
-            <header><div id="dm-title" style="font-weight:bold;">個人チャット</div></header>
+            <header>
+                <button class="btn-ghost mobile-back" style="display:none; margin-right:10px; padding:2px 8px;" onclick="toggleSidebar()">≡</button>
+                <div id="dm-title" style="font-weight:bold;">個人チャット</div>
+                <button id="dm-close-btn" class="btn-danger" style="margin-left:auto; font-size:11px; display:none; padding:4px 8px;" onclick="closeDM()">切断</button>
+            </header>
+            
             <div id="dm-init" style="padding:40px; text-align:center;">
-                <p>相手のPINを入力して接続申請</p>
-                <input type="text" id="target-pin" maxlength="5" style="background:#222; border:1px solid #444; color:#fff; padding:10px; font-size:20px; width:120px; text-align:center; border-radius:8px;">
-                <button class="btn btn-primary" style="display:block; margin:20px auto;" onclick="requestConnectByPin()">申請を送る</button>
-                <p style="font-size:12px; opacity:0.6;">あなたのPIN: <strong id="my-pin-label"></strong></p>
+                <p>相手のPINを入力して接続リクエストを送信</p>
+                <input type="text" id="target-pin" style="background:#222; border:1px solid #444; color:#fff; padding:10px; text-align:center; font-size:20px; width:150px; border-radius:8px;" placeholder="00000">
+                <button class="btn btn-primary" style="display:block; margin:20px auto;" onclick="requestConnect()">リクエスト送信</button>
+                <p style="font-size:12px; color:var(--text-sub);">あなたのPIN: <strong id="my-pin-display" style="color:#fff;">---</strong></p>
             </div>
+
+            <div id="dm-reconnect" style="display:none; position:absolute; inset:0; background:rgba(0,0,0,0.8); z-index:50; align-items:center; justify-content:center; flex-direction:column;">
+                <div style="background:var(--bg-discord); padding:30px; border-radius:8px; text-align:center;">
+                    <p style="font-weight:bold;">相手の接続を待っています...</p>
+                    <p style="font-size:12px; color:var(--text-sub);">10秒以内に復帰しない場合は切断されます。</p>
+                </div>
+            </div>
+
             <div id="msg-dm" class="msg-area" style="display:none;"></div>
             <div id="dm-input-area" class="input-box-wrapper" style="display:none;">
                 <div class="input-field">
-                    <label for="file-dm" class="file-btn">📎</label>
-                    <input type="file" id="file-dm" style="display:none" onchange="sendFile('dm', this)">
                     <input type="text" id="in-dm" placeholder="メッセージを送信" onkeypress="if(event.key==='Enter')sendMsg('dm')">
                 </div>
             </div>
         </div>
 
         <div id="view-friends" class="view">
-            <header><div style="font-weight:bold;">フレンド</div></header>
-            <div id="friend-requests" style="background:rgba(88,101,242,0.1);"></div>
-            <div id="friend-list" class="msg-area"></div>
+            <header>
+                <button class="btn-ghost mobile-back" style="display:none; margin-right:10px; padding:2px 8px;" onclick="toggleSidebar()">＜ 戻る</button>
+                <div style="font-weight:bold;">フレンド</div>
+            </header>
+            <div style="padding:15px; border-bottom:1px solid #222;">
+                <p style="font-size:12px; color:var(--text-sub); margin-top:0;">届いている申請</p>
+                <div id="friend-requests"></div>
+            </div>
+            <div id="friend-list" class="msg-area" style="padding:0;"></div>
         </div>
 
         <div id="view-settings" class="view">
-            <header><div style="font-weight:bold;">設定</div></header>
-            <div style="padding:20px;">
+            <header>
+                <button class="btn-ghost mobile-back" style="display:none; margin-right:10px; padding:2px 8px;" onclick="toggleSidebar()">＜ 戻る</button>
+                <div style="font-weight:bold;">ユーザー設定</div>
+            </header>
+            <div style="padding:20px; overflow-y:auto;">
                 <div style="background:#2f3136; padding:20px; border-radius:10px;">
-                    <label>表示名</label>
-                    <input type="text" id="set-name" style="width:100%; padding:10px; margin:10px 0; background:#222; border:1px solid #444; color:#fff;">
-                    <button class="btn btn-primary" style="width:100%;" onclick="saveSettings()">保存</button>
-                    <button class="btn" style="width:100%; margin-top:10px; background:#444; color:white;" onclick="promptAdmin()">管理者認証</button>
+                    <div style="text-align:center; margin-bottom:20px;">
+                        <img id="setup-avatar-preview" class="avatar" style="width:80px; height:80px; cursor:default;" src="">
+                        <input type="file" id="icon-upload" accept="image/*" style="display:none" onchange="handleImageUpload(this)">
+                        <button class="btn btn-ghost" style="display:block; margin:10px auto; font-size:11px;" onclick="document.getElementById('icon-upload').click()">画像をアップロード</button>
+                    </div>
+                    <label style="font-size:12px; color:var(--text-sub);">表示名</label>
+                    <input type="text" id="set-name" style="width:100%; padding:10px; box-sizing:border-box; background:#222; border:1px solid #444; color:#fff; border-radius:5px; margin:5px 0 15px;">
+                    <label style="font-size:12px; color:var(--text-sub);">自己紹介</label>
+                    <textarea id="set-bio" style="width:100%; height:80px; padding:10px; box-sizing:border-box; background:#222; border:1px solid #444; color:#fff; border-radius:5px; margin-top:5px;"></textarea>
+                    <button class="btn btn-primary" style="width:100%; margin-top:20px;" onclick="saveSettings()">設定を保存</button>
+                </div>
+
+                <div style="margin-top:20px;">
+                    <button class="btn btn-ghost" style="width:100%;" onclick="toggleInvisible()">オンライン隠し: <span id="inv-status">OFF</span></button>
+                    <button class="btn btn-ghost" style="width:100%; margin-top:10px; opacity:0.2;" onclick="promptAdmin()">管理者認証</button>
                 </div>
             </div>
         </div>
     </main>
 
-    <div id="img-modal" class="modal" onclick="this.style.display='none'">
-        <img id="img-full" style="max-width:90%; max-height:90%; border-radius:8px;">
+    <div id="profile-modal" class="modal" onclick="this.style.display='none'">
+        <div class="modal-box" onclick="event.stopPropagation()">
+            <div style="height:60px; background:var(--accent);"></div>
+            <div class="modal-body" style="position:relative; padding-top:50px;">
+                <img id="modal-avatar" class="avatar" style="width:80px; height:80px; position:absolute; top:-40px; left:20px; border:6px solid var(--bg-discord);" src="">
+                <h2 id="modal-name" style="margin:0;"></h2>
+                <div id="modal-badges" style="margin-bottom:5px;"></div>
+                <div id="modal-status-label" style="font-size:12px; margin-bottom:10px; color:var(--text-sub);"></div>
+                <div id="modal-bio" style="background:#222; padding:12px; border-radius:8px; font-size:14px; margin:15px 0;"></div>
+                
+                <div id="modal-actions" style="display:flex; gap:10px; flex-wrap:wrap;"></div>
+                
+                <div id="modal-footer" style="font-size:11px; margin-top:15px; color:var(--text-sub); border-top:1px solid #444; padding-top:10px;"></div>
+            </div>
+        </div>
     </div>
 
     <script>
-        // データ永続化
-        const STORAGE_KEY = 'shirokuma_pro_v9';
-        let data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {
-            me: { id: Math.floor(Math.random()*9e9+1e9).toString(), name: 'ゲスト', isAdmin: false, icon: '' },
-            friends: [],
-            pendingReqs: [],
-            adminFails: 0,
-            lockUntil: 0
-        };
+        // --- データ管理 ---
+        let me = JSON.parse(localStorage.getItem('sh7_me') || '{"name":"ゲスト","id":"","icon":"","bio":"","isAdmin":false,"isVerified":false,"isInvisible":false}');
+        let friends = JSON.parse(localStorage.getItem('sh7_friends') || '[]');
+        let pendingRequests = JSON.parse(localStorage.getItem('sh7_reqs') || '[]');
+        let verifiedList = JSON.parse(localStorage.getItem('sh7_vlist') || '[]');
 
-        function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+        if(!me.id) me.id = Math.floor(Math.random()*9e9+1e9).toString();
+        localStorage.setItem('sh7_me', JSON.stringify(me));
 
-        const peer = new Peer('SH_V9_' + data.me.id);
+        const goldBadge = `<svg class="badge badge-gold"><use href="#icon-ver"/></svg>`;
+        const blueBadge = `<svg class="badge badge-blue"><use href="#icon-ver"/></svg>`;
+        const sysIcon = "https://img.icons8.com/ios-filled/100/ffffff/settings.png";
+
+        // --- PeerJS ---
+        const peer = new Peer('SH7_' + me.id);
         const myPin = Math.floor(Math.random()*90000+10000).toString();
-        const pinPeer = new Peer('SH_V9_PIN_' + myPin);
+        const pinPeer = new Peer('SH7_PIN_' + myPin);
         
         let activeConn = null;
         let globalConns = [];
-        let isGlobalHost = false;
-
-        function showToast(msg) {
-            const t = document.createElement('div');
-            t.className = 'toast'; t.textContent = msg;
-            document.getElementById('toast-container').appendChild(t);
-            setTimeout(() => t.remove(), 4000);
-        }
+        let reconnectTimer = null;
 
         window.onload = () => {
-            document.getElementById('my-id-label').textContent = data.me.id;
-            document.getElementById('my-pin-label').textContent = myPin;
-            document.getElementById('set-name').value = data.me.name;
-            initGlobalChat();
+            initUI();
+            connectGlobal();
             renderFriends();
-            setInterval(checkOnline, 10000);
+            checkFriendsOnline();
+            setInterval(checkFriendsOnline, 10000); // 負荷軽減のため10秒間隔に変更
         };
 
-        // --- 通信ロジック ---
+        function initUI() {
+            document.getElementById('my-id-display').textContent = me.id;
+            document.getElementById('my-pin-display').textContent = myPin;
+            document.getElementById('my-name-side').textContent = me.name;
+            document.getElementById('my-avatar-side').src = me.icon || 'https://via.placeholder.com/32';
+            document.getElementById('setup-avatar-preview').src = me.icon || 'https://via.placeholder.com/80';
+            
+            document.getElementById('my-avatar-side').className = `avatar ${me.isInvisible ? 'invisible' : 'online'}`;
+            document.getElementById('my-status-text').textContent = me.isInvisible ? '隠密中' : 'オンライン';
+            
+            document.getElementById('set-name').value = me.name;
+            document.getElementById('set-bio').value = me.bio;
+            document.getElementById('inv-status').textContent = me.isInvisible ? 'ON' : 'OFF';
+            
+            let badges = me.isAdmin ? goldBadge : (me.isVerified ? blueBadge : "");
+            document.getElementById('my-badge-side').innerHTML = badges;
+        }
+
+        // --- 通信コア ---
         peer.on('connection', conn => {
-            if(conn.metadata?.type === 'friend_req') {
-                if(!data.pendingReqs.find(p => p.id === conn.metadata.id)) {
-                    data.pendingReqs.push(conn.metadata);
+            if(conn.metadata?.isGlobal) { setupGlobal(conn); return; }
+            if(conn.metadata?.isFriendReq) {
+                if(!pendingRequests.find(r => r.id === conn.metadata.id)) {
+                    pendingRequests.push(conn.metadata);
                     saveData(); renderFriends();
-                    showToast("新しいフレンド申請が届きました！");
                 }
-            } else if(conn.metadata?.type === 'dm_req') {
-                if(confirm(`${conn.metadata.name}から接続申請。許可しますか？`)) {
-                    setupDM(conn);
-                }
+                return;
             }
+            if(confirm(`${conn.metadata.name}から接続リクエスト。承認しますか？`)) setupDM(conn);
         });
 
-        pinPeer.on('connection', conn => {
-            if(confirm(`${conn.metadata.name}から接続申請。許可しますか？`)) {
-                setupDM(conn);
-            }
-        });
+        pinPeer.on('connection', conn => setupDM(conn));
 
         function setupDM(conn) {
             activeConn = conn;
@@ -199,189 +290,265 @@
                 document.getElementById('dm-init').style.display = 'none';
                 document.getElementById('msg-dm').style.display = 'block';
                 document.getElementById('dm-input-area').style.display = 'block';
-                addMsg('dm', { name: 'システム', content: '接続されました', system: true });
+                document.getElementById('dm-close-btn').style.display = 'block';
+                addMsg('dm', {name:'システム', icon:sysIcon, content:'接続されました', system:true, isAdmin:true});
+                conn.send({type:'sync', me:me, vList: verifiedList});
             });
-            conn.on('data', d => {
-                if(d.type === 'msg') addMsg('dm', d);
+
+            conn.on('data', data => {
+                clearTimeout(reconnectTimer);
+                document.getElementById('dm-reconnect').style.display = 'none';
+
+                if(data.type === 'msg') addMsg('dm', data);
+                if(data.type === 'sync') {
+                    activeConn.peerData = data.me;
+                    if(!me.isAdmin) {
+                        me.isVerified = data.vList.includes(me.id);
+                        initUI();
+                    }
+                }
+                if(data.type === 'verified_update' && data.targetId === me.id) {
+                    me.isVerified = data.status;
+                    saveData(); initUI();
+                    alert(data.status ? "認証されました！" : "認証が解除されました。");
+                }
             });
+
+            conn.on('close', handleDisconnect);
         }
 
-        function requestConnectByPin() {
+        function requestConnect() {
             const pin = document.getElementById('target-pin').value;
-            showToast("接続申請を送信しました...");
-            const conn = peer.connect('SH_V9_PIN_' + pin, { metadata: { type: 'dm_req', ...data.me } });
+            const conn = peer.connect('SH7_PIN_'+pin, { metadata: { id: me.id, name: me.name } });
             setupDM(conn);
         }
 
-        // --- メッセージ & ファイル ---
-        function sendMsg(target) {
-            const input = document.getElementById('in-' + target);
-            if(!input.value.trim()) return;
-            const msgData = { type: 'msg', content: input.value, ...data.me, time: new Date().toLocaleTimeString() };
-            
-            if(target === 'global') {
-                broadcastGlobal(msgData);
-            } else if(activeConn) {
-                activeConn.send(msgData);
-            }
-            addMsg(target, msgData);
-            input.value = "";
+        function handleDisconnect() {
+            if(!activeConn) return;
+            document.getElementById('dm-reconnect').style.display = 'flex';
+            reconnectTimer = setTimeout(() => {
+                alert("通信が途絶えたため切断しました。");
+                closeDM();
+            }, 10000);
         }
 
-        function sendFile(target, input) {
-            const file = input.files[0];
-            if(!file) return;
-            if(file.size > 2 * 1024 * 1024) return alert("ファイルサイズは2MBまでです");
+        function closeDM() {
+            if(activeConn) activeConn.close();
+            activeConn = null;
+            document.getElementById('dm-init').style.display = 'block';
+            document.getElementById('msg-dm').style.display = 'none';
+            document.getElementById('dm-input-area').style.display = 'none';
+            document.getElementById('dm-close-btn').style.display = 'none';
+            document.getElementById('dm-reconnect').style.display = 'none';
+            document.getElementById('msg-dm').innerHTML = "";
+        }
 
-            const reader = new FileReader();
-            reader.onload = e => {
-                const msgData = {
-                    type: 'msg',
-                    file: e.target.result,
-                    fileName: file.name,
-                    fileType: file.type,
-                    ...data.me,
-                    time: new Date().toLocaleTimeString()
+        // --- フレンド機能 ---
+        function checkFriendsOnline() {
+            friends.forEach(f => {
+                // 生存確認用に一時的な接続を試みる
+                const conn = peer.connect('SH7_' + f.id, { reliable: false });
+                let timeout = setTimeout(() => { f.online = false; renderFriends(); }, 3000);
+                
+                conn.on('open', () => {
+                    clearTimeout(timeout);
+                    f.online = true;
+                    conn.close(); // 確認できたらすぐ閉じる
+                    renderFriends();
+                });
+                conn.on('error', () => {
+                    clearTimeout(timeout);
+                    f.online = false;
+                    renderFriends();
+                });
+            });
+        }
+
+        function sendFriendRequest(id, name) {
+            if(id === 'SYSTEM_ID') return;
+            const conn = peer.connect('SH7_'+id, { metadata: { ...me, isFriendReq: true } });
+            conn.on('open', () => {
+                alert("フレンド申請を送信しました。相手の承認をお待ちください。");
+                conn.close();
+            });
+        }
+
+        function acceptFriend(req) {
+            if(!friends.find(f => f.id === req.id)) {
+                friends.push({...req, online: true});
+                pendingRequests = pendingRequests.filter(r => r.id !== req.id);
+                saveData(); renderFriends();
+                alert("フレンドになりました。相手がオンラインになった際に同期されます。");
+            }
+        }
+
+        // --- プロフィール UI ---
+        function openMyProfile() { viewProfileById(me.id, me.name, me.icon, me.isAdmin, me.isVerified, me.bio); }
+
+        function viewProfileById(id, name, icon, isAdmin, isVerified, bio) {
+            const modal = document.getElementById('profile-modal');
+            document.getElementById('modal-avatar').src = icon || 'https://via.placeholder.com/80';
+            document.getElementById('modal-name').textContent = name;
+            document.getElementById('modal-bio').textContent = bio || (id === me.id ? me.bio : "自己紹介はありません。");
+            
+            const isAdmBool = (isAdmin === 'true' || isAdmin === true);
+            const isVerBool = (isVerified === 'true' || isVerified === true);
+            
+            document.getElementById('modal-badges').innerHTML = isAdmBool ? goldBadge : (isVerBool ? blueBadge : "");
+
+            // 専用メッセージの復活
+            const footer = document.getElementById('modal-footer');
+            footer.textContent = "";
+            if (isAdmBool) {
+                footer.textContent = "このアカウントは管理者が所有しています。";
+            } else if (isVerBool) {
+                footer.textContent = "このアカウントは管理者によって認証されています。";
+            }
+
+            const actions = document.getElementById('modal-actions');
+            actions.innerHTML = "";
+
+            if(id === 'SYSTEM_ID') {
+                actions.innerHTML = `<span style="font-size:12px; color:var(--text-sub);">このアカウントにはフレンド申請を送ることができません。</span>`;
+            } else if(id !== me.id) {
+                if(!friends.find(f => f.id === id)) {
+                    const btn = document.createElement('button');
+                    btn.className = "btn btn-primary";
+                    btn.textContent = "フレンド申請を送る";
+                    btn.onclick = () => sendFriendRequest(id, name);
+                    actions.appendChild(btn);
+                } else {
+                    const btn = document.createElement('button');
+                    btn.className = "btn btn-danger";
+                    btn.textContent = "フレンド解除";
+                    btn.onclick = () => { friends = friends.filter(f => f.id !== id); saveData(); renderFriends(); modal.style.display='none'; };
+                    actions.appendChild(btn);
+                }
+
+                if(me.isAdmin) {
+                    const isVer = verifiedList.includes(id);
+                    const vBtn = document.createElement('button');
+                    vBtn.className = isVer ? "btn btn-ghost" : "btn btn-primary";
+                    vBtn.textContent = isVer ? "認証を取り消す" : "認証マークを付与";
+                    vBtn.onclick = () => {
+                        if(isVer) verifiedList = verifiedList.filter(v => v !== id);
+                        else verifiedList.push(id);
+                        saveData();
+                        if(activeConn) activeConn.send({type:'verified_update', targetId:id, status:!isVer});
+                        alert("更新しました。");
+                        modal.style.display='none';
+                    };
+                    actions.appendChild(vBtn);
+                }
+            }
+            modal.style.display = 'flex';
+        }
+
+        // --- 設定・画面操作 ---
+        function handleImageUpload(input) {
+            const file = input.files[0];
+            if(file) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    document.getElementById('setup-avatar-preview').src = e.target.result;
+                    me.icon = e.target.result;
                 };
-                if(target === 'global') broadcastGlobal(msgData);
-                else if(activeConn) activeConn.send(msgData);
-                addMsg(target, msgData);
-            };
-            reader.readAsDataURL(file);
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function saveSettings() {
+            me.name = document.getElementById('set-name').value;
+            me.bio = document.getElementById('set-bio').value;
+            saveData(); initUI(); alert("保存しました。");
+        }
+
+        function sendMsg(target) {
+            const input = document.getElementById('in-'+target);
+            if(!input.value.trim()) return;
+            const data = { type:'msg', content:input.value, name:me.name, icon:me.icon, id:me.id, isAdmin:me.isAdmin, isVerified:me.isVerified, time:new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) };
+            if(target === 'global') globalConns.forEach(c => c.send(data));
+            else if(activeConn) activeConn.send(data);
+            addMsg(target, data);
             input.value = "";
         }
 
         function addMsg(target, d) {
-            const area = document.getElementById('msg-' + target);
+            const area = document.getElementById('msg-'+target);
             const div = document.createElement('div');
             div.className = 'msg-row';
-            
-            let contentHtml = `<div class="msg-text">${d.content || ''}</div>`;
-            if(d.file) {
-                if(d.fileType.startsWith('image/')) {
-                    contentHtml += `<img src="${d.file}" class="attached-img" onclick="zoomImg('${d.file}')">`;
-                } else {
-                    contentHtml += `<a href="${d.file}" download="${d.fileName}" class="file-link">📄 ${d.fileName} (ダウンロード)</a>`;
-                }
-            }
-
+            const badge = d.isAdmin ? goldBadge : (d.isVerified ? blueBadge : "");
+            const nameColor = d.isAdmin ? "color:var(--gold)" : "color:#fff";
             div.innerHTML = `
-                <img src="${d.icon || 'https://via.placeholder.com/32'}" class="avatar ${d.isAdmin?'admin-shape':''}">
-                <div style="flex-grow:1;">
-                    <div style="font-size:12px; margin-bottom:2px;">
-                        <span style="font-weight:bold; color:${d.isAdmin?'var(--gold)':'#fff'}">${d.name}</span>
-                        <span style="opacity:0.4; font-size:10px; margin-left:8px;">${d.time || ''}</span>
+                <img src="${d.icon || 'https://via.placeholder.com/40'}" class="avatar" style="width:40px; height:40px;" onclick="viewProfileById('${d.id}','${d.name}','${d.icon}',${d.isAdmin},${d.isVerified},'${d.bio||''}')">
+                <div class="msg-content">
+                    <div class="msg-header">
+                        <span class="msg-name" style="${nameColor}" onclick="viewProfileById('${d.id}','${d.name}','${d.icon}',${d.isAdmin},${d.isVerified},'${d.bio||''}')">${d.name}</span>${badge}
+                        <span style="font-size:10px; color:var(--text-sub); margin-left:8px;">${d.time || ''}</span>
                     </div>
-                    ${contentHtml}
+                    <div class="msg-text">${d.content}</div>
                 </div>
             `;
             area.appendChild(div);
             area.scrollTop = area.scrollHeight;
         }
 
-        // --- グローバルチャット ---
-        function initGlobalChat() {
-            const G_ID = 'SH_V9_GLOBAL_SYNC';
-            const h = new Peer(G_ID);
-            h.on('open', () => { isGlobalHost = true; });
-            h.on('connection', c => {
-                globalConns.push(c);
-                c.on('data', d => { addMsg('global', d); broadcastGlobal(d, c.peer); });
-            });
-            h.on('error', () => {
-                const c = peer.connect(G_ID);
-                c.on('open', () => globalConns = [c]);
-                c.on('data', d => addMsg('global', d));
-            });
-        }
-
-        function broadcastGlobal(d, skipId) {
-            globalConns.forEach(c => { if(c.peer !== skipId) c.send(d); });
-        }
-
-        // --- 管理者認証セキュリティ ---
-        function promptAdmin() {
-            const now = Date.now();
-            if(data.lockUntil > now) {
-                const wait = Math.ceil((data.lockUntil - now) / 60000);
-                alert(`ロックされています。あと ${wait} 分待ってください。`);
-                return;
-            }
-
-            const key = prompt("管理者キーを入力してください");
-            if(key === "9999") {
-                data.me.isAdmin = true;
-                data.adminFails = 0;
-                saveData();
-                location.reload();
-            } else if(key !== null) {
-                data.adminFails++;
-                if(data.adminFails >= 5) {
-                    data.lockUntil = Date.now() + (30 * 60000);
-                    alert("5回失敗したため、30分間ロックされました。");
-                } else {
-                    alert(`キーが違います。 (あと ${5 - data.adminFails} 回)`);
-                }
-                saveData();
-            }
-        }
-
-        // --- フレンド & オンライン ---
-        function checkOnline() {
-            data.friends.forEach(f => {
-                const c = peer.connect('SH_V9_' + f.id);
-                let t = setTimeout(() => { f.online = false; renderFriends(); }, 3000);
-                c.on('open', () => { clearTimeout(t); f.online = true; c.close(); renderFriends(); });
-            });
-        }
-
         function renderFriends() {
             const list = document.getElementById('friend-list');
-            const reqs = document.getElementById('friend-requests');
-            list.innerHTML = ""; reqs.innerHTML = "";
+            const reqArea = document.getElementById('friend-requests');
+            list.innerHTML = ""; reqArea.innerHTML = "";
 
-            data.pendingReqs.forEach(r => {
-                const d = document.createElement('div');
-                d.style = "padding:10px; display:flex; align-items:center; gap:10px; border-bottom:1px solid #333;";
-                d.innerHTML = `<span style="flex-grow:1; font-size:14px;">${r.name}からの申請</span><button class="btn btn-primary" onclick="acceptFriend('${r.id}')">承認</button>`;
-                reqs.appendChild(d);
+            pendingRequests.forEach(r => {
+                const div = document.createElement('div');
+                div.style = "display:flex; align-items:center; gap:10px; padding:10px; background:#222; margin:5px 15px; border-radius:8px;";
+                div.innerHTML = `<span style="flex-grow:1;">${r.name}</span><button class="btn btn-primary" style="padding:4px 10px; font-size:12px;" onclick='acceptFriend(${JSON.stringify(r)})'>承認</button>`;
+                reqArea.appendChild(div);
             });
 
-            data.friends.forEach(f => {
-                const d = document.createElement('div');
-                d.className = "nav-item";
-                d.innerHTML = `
-                    <div style="position:relative;">
-                        <img src="https://via.placeholder.com/32" class="avatar ${f.online?'online':''}">
-                    </div>
-                    <div style="flex-grow:1;">
-                        <div style="font-weight:bold; font-size:14px; color:#fff;">${f.name}</div>
-                        <div style="font-size:10px;">${f.online?'オンライン':'オフライン'}</div>
-                    </div>
+            friends.forEach(f => {
+                const div = document.createElement('div');
+                div.className = "nav-item";
+                div.style.padding = "10px 15px";
+                div.innerHTML = `
+                    <img src="${f.icon || 'https://via.placeholder.com/32'}" class="avatar ${f.online?'online':'offline'}" style="width:32px; height:32px; border-width:2px;">
+                    <div style="flex-grow:1"><div style="font-weight:bold; font-size:14px; color:#fff;">${f.name}</div><div style="font-size:11px;">${f.online?'オンライン':'オフライン'}</div></div>
                 `;
-                list.appendChild(d);
+                div.onclick = () => viewProfileById(f.id, f.name, f.icon, f.isAdmin, f.isVerified, f.bio);
+                list.appendChild(div);
             });
         }
 
-        function acceptFriend(id) {
-            const r = data.pendingReqs.find(p => p.id === id);
-            data.friends.push({...r, online:true});
-            data.pendingReqs = data.pendingReqs.filter(p => p.id !== id);
-            saveData(); renderFriends();
+        function saveData() {
+            localStorage.setItem('sh7_me', JSON.stringify(me));
+            localStorage.setItem('sh7_friends', JSON.stringify(friends));
+            localStorage.setItem('sh7_reqs', JSON.stringify(pendingRequests));
+            localStorage.setItem('sh7_vlist', JSON.stringify(verifiedList));
         }
 
-        // UI操作
         function showView(v) {
             document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
             document.getElementById('view-'+v).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            if(window.innerWidth <= 768) toggleSidebar();
         }
-        function saveSettings() {
-            data.me.name = document.getElementById('set-name').value;
-            saveData(); showToast("保存しました");
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+        function promptAdmin() { if(prompt("管理者キー") === '9999999999') { me.isAdmin = true; saveData(); location.reload(); } }
+        function toggleInvisible() { me.isInvisible = !me.isInvisible; saveData(); initUI(); }
+
+        function connectGlobal() {
+            const rid = 'SH7_GLOBAL_V1';
+            const conn = peer.connect(rid, { metadata: { isGlobal: true, name: me.name } });
+            setupGlobal(conn);
+            const r = new Peer(rid);
+            r.on('connection', c => setupGlobal(c));
         }
-        function zoomImg(src) {
-            document.getElementById('img-full').src = src;
-            document.getElementById('img-modal').style.display = 'flex';
+
+        function setupGlobal(c) {
+            if(!globalConns.find(x => x.peer === c.peer)) {
+                globalConns.push(c);
+                c.on('data', d => { if(d.type === 'msg') addMsg('global', d); });
+                document.getElementById('global-count').textContent = `${globalConns.length + 1}人が接続中`;
+            }
         }
     </script>
 </body>
